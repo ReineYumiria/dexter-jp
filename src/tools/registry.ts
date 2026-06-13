@@ -1,5 +1,14 @@
 import { StructuredToolInterface } from '@langchain/core/tools';
-import { createGetFinancials, createReadFilings, createScreenCompanies, getStockPrice, isJQuantsAvailable, STOCK_PRICE_DESCRIPTION } from './finance/index.js';
+import {
+  createGetFinancials,
+  createReadFilings,
+  createScreenCompanies,
+  getPbrBollingerScreener,
+  getStockPrice,
+  isJQuantsAvailable,
+  PBR_BOLLINGER_SCREENER_DESCRIPTION,
+  STOCK_PRICE_DESCRIPTION,
+} from './finance/index.js';
 import { exaSearch, perplexitySearch, tavilySearch, langSearch, WEB_SEARCH_DESCRIPTION, xSearchTool, X_SEARCH_DESCRIPTION } from './search/index.js';
 import { createWebSearchTool, type WebSearchProvider } from './search/web-search.js';
 import { getSetting } from '../utils/config.js';
@@ -152,15 +161,24 @@ export function getToolRegistry(model: string): RegisteredTool[] {
     );
   }
 
-  // Include stock price tool if J-Quants refresh token is configured
+  // Include stock price tools if J-Quants API key is configured
   if (isJQuantsAvailable()) {
-    tools.push({
-      name: 'get_stock_price',
-      tool: getStockPrice,
-      description: STOCK_PRICE_DESCRIPTION,
-      compactDescription: 'Japanese stock price OHLC and volume from J-Quants (TSE official data).',
-      concurrencySafe: true,
-    });
+    tools.push(
+      {
+        name: 'get_stock_price',
+        tool: getStockPrice,
+        description: STOCK_PRICE_DESCRIPTION,
+        compactDescription: 'Japanese stock price OHLC and volume from J-Quants (TSE official data).',
+        concurrencySafe: true,
+      },
+      {
+        name: 'get_pbr_bollinger_screener',
+        tool: getPbrBollingerScreener,
+        description: PBR_BOLLINGER_SCREENER_DESCRIPTION,
+        compactDescription: 'Technical-only Japanese stock screener using adjusted J-Quants OHLCV, Bollinger Bands, volume rebound, and simplified Ichimoku. No buy/sell recommendation.',
+        concurrencySafe: true,
+      },
+    );
   }
 
   // Build web_search as a fallback chain over whichever providers have keys configured.

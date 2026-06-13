@@ -4,6 +4,7 @@ export { getKeyRatios, getAnalysis } from './key-ratios.js';
 export { getEarnings } from './earnings.js';
 export { getShareholders } from './shareholders.js';
 export { getStockPrice, isJQuantsAvailable, STOCK_PRICE_DESCRIPTION } from './stock-price.js';
+export { getPbrBollingerScreener, PBR_BOLLINGER_SCREENER_DESCRIPTION } from './pbr-bollinger-screener.js';
 export { createGetFinancials } from './get-financials.js';
 export { createReadFilings } from './read-filings.js';
 export { createScreenCompanies } from './screen-companies.js';
