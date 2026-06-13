@@ -695,20 +695,12 @@ function buildNormalCandidateTsvRow(result: ScreenerResult): string[] {
   ].join(' / ');
 
   const memo = [
-    'v0.3.1 step3 TSV出力',
-    `割安性部品点=${result.valueScore}/14`,
-    `財務安全性部品点=${result.safetyScore}/8`,
-    `テクニカル部品点=${result.technicalScore}/20`,
-    `リスク過熱感部品点=${result.riskScore}/7`,
-    '部品点は合算禁止',
-    'BB状態は表示補助付き',
-    'PBR=J-Quants調整後終値/EDINET DB BPS',
-    '配当利回り=EDINET DB DPS/J-Quants調整後終値',
-    '暫定財務指標',
-    '調整後株価使用',
-    '株価財務ソース混在',
-    '総合スコア未実装',
-    '分類未実装',
+    'v0.3.1 step4',
+    `部品点 V=${result.valueScore}/14 S=${result.safetyScore}/8 T=${result.technicalScore}/20 R=${result.riskScore}/7`,
+    '合算禁止',
+    '暫定指標は注意フラグ参照',
+    '総合点なし',
+    '分類なし',
     '売買判断なし',
   ].join(' / ');
 
@@ -789,7 +781,7 @@ function parseTargets(inputTargets?: string[]): ScreenerTarget[] {
 export const PBR_BOLLINGER_SCREENER_DESCRIPTION = `
 Runs a minimal PBR x Bollinger Band screener step for Japanese equities.
 
-v0.3.1 step 3:
+v0.3.1 step 4:
 - Fetches daily adjusted OHLCV from J-Quants
 - Calculates Bollinger Band state
 - Calculates volume rebound state
@@ -802,6 +794,7 @@ v0.3.1 step 3:
 - Clarifies that component scores are incomplete and must not be summed as a total score
 - Clarifies provisional calculation sources for PBR and dividend yield
 - Adds display labels for BB states while keeping internal enum values unchanged
+- Keeps TSV memo compact and moves detailed warnings to caution flags and notes
 - Does not calculate total score or A/B/C classification
 - Does not provide buy/sell recommendations
 
@@ -971,8 +964,8 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
 
     return formatToolResult(
       {
-        version: 'v0.3.1-step3',
-        scope: 'component_scores_with_source_notes_financial_metrics_and_tsv',
+        version: 'v0.3.1-step4',
+        scope: 'component_scores_with_compact_tsv_memo',
         targets: targets.map((target) => target.code),
         results,
         tsv,
@@ -991,7 +984,8 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
           'Growth / improvement score is intentionally not implemented',
           'Financial metrics are included as provisional values',
           'TSV output is included for research candidate review',
-          'Total score and A/B/C classification are intentionally not implemented in v0.3.1 step 3',
+          'TSV memo is intentionally compact; check caution flags and notes for detailed warnings',
+          'Total score and A/B/C classification are intentionally not implemented in v0.3.1 step 4',
         ],
       },
       [],
