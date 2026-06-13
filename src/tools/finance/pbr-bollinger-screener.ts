@@ -115,6 +115,7 @@ type ScreenerResult = {
   riskScore: number;
   riskScoreNotes: string[];
   bbState: string;
+  bbStateLabel: string;
   bbPosition: number | null;
   middle: number | null;
   upper2: number | null;
@@ -622,6 +623,25 @@ function calculateRiskScore(result: {
   };
 }
 
+function formatBbStateLabel(bbState: string): string {
+  switch (bbState) {
+    case 'BB_DOWN_WALK':
+      return '下限バンド沿い下落';
+    case 'BB_REBOUND':
+      return '-2σ割れ後の復帰';
+    case 'BB_MIDDLE_RECOVER':
+      return 'ミドルライン回復';
+    case 'BB_LOW_NEAR':
+      return '低位ゾーン（-2σ付近または下側）';
+    case 'BB_NEUTRAL':
+      return '中立';
+    case 'BB_UNKNOWN':
+      return '不明';
+    default:
+      return bbState;
+  }
+}
+
 function formatNumber(value: number | null, digits = 2): string {
   return value === null ? 'NA' : value.toFixed(digits);
 }
@@ -672,12 +692,13 @@ function buildNormalCandidateTsvRow(result: ScreenerResult): string[] {
   ].join(' / ');
 
   const memo = [
-    'v0.3.1 step1 TSV出力',
+    'v0.3.1 step2 TSV出力',
     `割安性部品点=${result.valueScore}/14`,
     `財務安全性部品点=${result.safetyScore}/8`,
     `テクニカル部品点=${result.technicalScore}/20`,
     `リスク過熱感部品点=${result.riskScore}/7`,
     '部品点は合算禁止',
+    'BB状態は表示補助付き',
     '暫定財務指標',
     '調整後株価使用',
     '総合スコア未実装',
@@ -701,7 +722,7 @@ function buildNormalCandidateTsvRow(result: ScreenerResult): string[] {
     '未実装',
     '未実装',
     '未実装',
-    result.bbState,
+    `${result.bbState} (${result.bbStateLabel})`,
     formatNumber(result.bbPosition, 4),
     formatBoolean(result.middleLineRecovered),
     result.volumeRebound,
@@ -762,7 +783,7 @@ function parseTargets(inputTargets?: string[]): ScreenerTarget[] {
 export const PBR_BOLLINGER_SCREENER_DESCRIPTION = `
 Runs a minimal PBR x Bollinger Band screener step for Japanese equities.
 
-v0.3.1 step 1:
+v0.3.1 step 2:
 - Fetches daily adjusted OHLCV from J-Quants
 - Calculates Bollinger Band state
 - Calculates volume rebound state
@@ -773,6 +794,7 @@ v0.3.1 step 1:
 - Calculates provisional financial safety component score from implemented fields only
 - Calculates provisional risk / overheat component score from implemented fields only
 - Clarifies that component scores are incomplete and must not be summed as a total score
+- Adds display labels for BB states while keeping internal enum values unchanged
 - Does not calculate total score or A/B/C classification
 - Does not provide buy/sell recommendations
 
@@ -875,6 +897,7 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
             riskScore: riskScore.score,
             riskScoreNotes: riskScore.notes,
             bbState: indicators.bbState,
+            bbStateLabel: formatBbStateLabel(indicators.bbState),
             bbPosition: bollinger?.bbPosition ?? null,
             middle: bollinger?.middle ?? null,
             upper2: bollinger?.upper2 ?? null,
@@ -916,6 +939,7 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
             riskScore: 0,
             riskScoreNotes: ['Risk / overheat score unavailable because calculation failed'],
             bbState: 'BB_UNKNOWN',
+            bbStateLabel: formatBbStateLabel('BB_UNKNOWN'),
             bbPosition: null,
             middle: null,
             upper2: null,
@@ -940,8 +964,8 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
 
     return formatToolResult(
       {
-        version: 'v0.3.1-step1',
-        scope: 'component_scores_with_financial_metrics_and_tsv',
+        version: 'v0.3.1-step2',
+        scope: 'component_scores_with_bb_state_labels_financial_metrics_and_tsv',
         targets: targets.map((target) => target.code),
         results,
         tsv,
@@ -949,6 +973,8 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
           'This is not investment advice',
           'No buy/sell recommendation is provided',
           'Component scores are incomplete and must not be summed as a total score',
+          'BB state labels are display helpers; internal enum values are unchanged',
+          'BB_LOW_NEAR display label clarifies that it includes near or below the lower band',
           'Value score is included as a provisional component with a maximum implemented score of 14 points',
           'Financial safety score is included as a provisional component with a maximum implemented score of 8 points',
           'Technical score is included as a provisional 20-point component',
@@ -956,7 +982,7 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
           'Growth / improvement score is intentionally not implemented',
           'Financial metrics are included as provisional values',
           'TSV output is included for research candidate review',
-          'Total score and A/B/C classification are intentionally not implemented in v0.3.1 step 1',
+          'Total score and A/B/C classification are intentionally not implemented in v0.3.1 step 2',
         ],
       },
       [],
