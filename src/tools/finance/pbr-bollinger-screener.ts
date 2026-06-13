@@ -672,11 +672,12 @@ function buildNormalCandidateTsvRow(result: ScreenerResult): string[] {
   ].join(' / ');
 
   const memo = [
-    'v0.3 step8 TSV出力',
-    `割安性仮点数=${result.valueScore}/14`,
-    `財務安全性仮点数=${result.safetyScore}/8`,
-    `テクニカル仮点数=${result.technicalScore}/20`,
-    `リスク過熱感仮点数=${result.riskScore}/7`,
+    'v0.3.1 step1 TSV出力',
+    `割安性部品点=${result.valueScore}/14`,
+    `財務安全性部品点=${result.safetyScore}/8`,
+    `テクニカル部品点=${result.technicalScore}/20`,
+    `リスク過熱感部品点=${result.riskScore}/7`,
+    '部品点は合算禁止',
     '暫定財務指標',
     '調整後株価使用',
     '総合スコア未実装',
@@ -761,7 +762,7 @@ function parseTargets(inputTargets?: string[]): ScreenerTarget[] {
 export const PBR_BOLLINGER_SCREENER_DESCRIPTION = `
 Runs a minimal PBR x Bollinger Band screener step for Japanese equities.
 
-v0.3 step 8:
+v0.3.1 step 1:
 - Fetches daily adjusted OHLCV from J-Quants
 - Calculates Bollinger Band state
 - Calculates volume rebound state
@@ -771,6 +772,7 @@ v0.3 step 8:
 - Calculates provisional value, financial safety, and technical component scores
 - Calculates provisional financial safety component score from implemented fields only
 - Calculates provisional risk / overheat component score from implemented fields only
+- Clarifies that component scores are incomplete and must not be summed as a total score
 - Does not calculate total score or A/B/C classification
 - Does not provide buy/sell recommendations
 
@@ -938,21 +940,23 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
 
     return formatToolResult(
       {
-        version: 'v0.3-step8',
-        scope: 'value_safety_technical_risk_scores_with_financial_metrics_and_tsv',
+        version: 'v0.3.1-step1',
+        scope: 'component_scores_with_financial_metrics_and_tsv',
         targets: targets.map((target) => target.code),
         results,
         tsv,
         notes: [
           'This is not investment advice',
           'No buy/sell recommendation is provided',
+          'Component scores are incomplete and must not be summed as a total score',
           'Value score is included as a provisional component with a maximum implemented score of 14 points',
           'Financial safety score is included as a provisional component with a maximum implemented score of 8 points',
           'Technical score is included as a provisional 20-point component',
           'Risk / overheat score is included as a provisional component with a maximum implemented score of 7 points',
+          'Growth / improvement score is intentionally not implemented',
           'Financial metrics are included as provisional values',
           'TSV output is included for research candidate review',
-          'Total score and A/B/C classification are intentionally not implemented in step 8',
+          'Total score and A/B/C classification are intentionally not implemented in v0.3.1 step 1',
         ],
       },
       [],
