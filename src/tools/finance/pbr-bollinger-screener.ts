@@ -669,7 +669,10 @@ function escapeTsvValue(value: string): string {
 function buildNormalCandidateTsvRow(result: ScreenerResult): string[] {
   const cautionFlags = [
     '暫定財務指標',
+    'PBR暫定計算',
+    '配当利回り暫定計算',
     '調整後株価使用',
+    '株価財務ソース混在',
   ];
 
   if (result.pbr !== null && result.pbr <= 1) {
@@ -692,15 +695,18 @@ function buildNormalCandidateTsvRow(result: ScreenerResult): string[] {
   ].join(' / ');
 
   const memo = [
-    'v0.3.1 step2 TSV出力',
+    'v0.3.1 step3 TSV出力',
     `割安性部品点=${result.valueScore}/14`,
     `財務安全性部品点=${result.safetyScore}/8`,
     `テクニカル部品点=${result.technicalScore}/20`,
     `リスク過熱感部品点=${result.riskScore}/7`,
     '部品点は合算禁止',
     'BB状態は表示補助付き',
+    'PBR=J-Quants調整後終値/EDINET DB BPS',
+    '配当利回り=EDINET DB DPS/J-Quants調整後終値',
     '暫定財務指標',
     '調整後株価使用',
+    '株価財務ソース混在',
     '総合スコア未実装',
     '分類未実装',
     '売買判断なし',
@@ -783,7 +789,7 @@ function parseTargets(inputTargets?: string[]): ScreenerTarget[] {
 export const PBR_BOLLINGER_SCREENER_DESCRIPTION = `
 Runs a minimal PBR x Bollinger Band screener step for Japanese equities.
 
-v0.3.1 step 2:
+v0.3.1 step 3:
 - Fetches daily adjusted OHLCV from J-Quants
 - Calculates Bollinger Band state
 - Calculates volume rebound state
@@ -794,6 +800,7 @@ v0.3.1 step 2:
 - Calculates provisional financial safety component score from implemented fields only
 - Calculates provisional risk / overheat component score from implemented fields only
 - Clarifies that component scores are incomplete and must not be summed as a total score
+- Clarifies provisional calculation sources for PBR and dividend yield
 - Adds display labels for BB states while keeping internal enum values unchanged
 - Does not calculate total score or A/B/C classification
 - Does not provide buy/sell recommendations
@@ -964,8 +971,8 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
 
     return formatToolResult(
       {
-        version: 'v0.3.1-step2',
-        scope: 'component_scores_with_bb_state_labels_financial_metrics_and_tsv',
+        version: 'v0.3.1-step3',
+        scope: 'component_scores_with_source_notes_financial_metrics_and_tsv',
         targets: targets.map((target) => target.code),
         results,
         tsv,
@@ -975,6 +982,8 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
           'Component scores are incomplete and must not be summed as a total score',
           'BB state labels are display helpers; internal enum values are unchanged',
           'BB_LOW_NEAR display label clarifies that it includes near or below the lower band',
+          'PBR is provisionally calculated as J-Quants adjusted close divided by EDINET DB BPS',
+          'Dividend yield is provisionally calculated as EDINET DB DPS divided by J-Quants adjusted close',
           'Value score is included as a provisional component with a maximum implemented score of 14 points',
           'Financial safety score is included as a provisional component with a maximum implemented score of 8 points',
           'Technical score is included as a provisional 20-point component',
@@ -982,7 +991,7 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
           'Growth / improvement score is intentionally not implemented',
           'Financial metrics are included as provisional values',
           'TSV output is included for research candidate review',
-          'Total score and A/B/C classification are intentionally not implemented in v0.3.1 step 2',
+          'Total score and A/B/C classification are intentionally not implemented in v0.3.1 step 3',
         ],
       },
       [],
