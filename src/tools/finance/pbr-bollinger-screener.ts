@@ -78,6 +78,11 @@ type TechnicalScore = {
   notes: string[];
 };
 
+type ValueScore = {
+  score: number;
+  notes: string[];
+};
+
 type ScreenerResult = {
   code: string;
   name: string;
@@ -93,6 +98,8 @@ type ScreenerResult = {
   dps: number | null;
   technicalScore: number;
   technicalScoreNotes: string[];
+  valueScore: number;
+  valueScoreNotes: string[];
   bbState: string;
   bbPosition: number | null;
   middle: number | null;
@@ -346,7 +353,6 @@ function calculateTechnicalScore(result: {
   let score = 0;
   const notes: string[] = [];
 
-  // Bollinger position: max 8
   switch (result.bbState) {
     case 'BB_REBOUND':
       score += 8;
@@ -373,7 +379,6 @@ function calculateTechnicalScore(result: {
       break;
   }
 
-  // Rebound from -2σ: max 4
   if (result.bbState === 'BB_REBOUND') {
     score += 4;
     notes.push('-2σ rebound: confirmed');
@@ -381,7 +386,6 @@ function calculateTechnicalScore(result: {
     notes.push('-2σ rebound: not confirmed');
   }
 
-  // Middle line recovery: max 3
   if (result.middleLineRecovered === true) {
     score += 3;
     notes.push('Middle line recovery: confirmed');
@@ -391,7 +395,6 @@ function calculateTechnicalScore(result: {
     notes.push('Middle line recovery: unknown');
   }
 
-  // Volume confirmation: max 3
   if (result.volumeRebound === 'STRONG_VOLUME_REBOUND') {
     score += 3;
     notes.push('Volume rebound: strong');
@@ -404,7 +407,6 @@ function calculateTechnicalScore(result: {
     notes.push('Volume rebound: unknown');
   }
 
-  // Ichimoku support: max 2
   if (result.ichimokuState === 'ABOVE_CLOUD') {
     score += 2;
     notes.push('Ichimoku: above cloud');
@@ -419,6 +421,76 @@ function calculateTechnicalScore(result: {
   } else {
     notes.push('Ichimoku: unknown');
   }
+
+  return {
+    score,
+    notes,
+  };
+}
+
+function calculateValueScore(result: {
+  pbr: number | null;
+  per: number | null;
+  dividendYield: number | null;
+}): ValueScore {
+  let score = 0;
+  const notes: string[] = [];
+
+  if (result.pbr === null) {
+    notes.push('PBR level: unknown');
+  } else if (result.pbr <= 0) {
+    notes.push('PBR level: invalid');
+  } else if (result.pbr <= 0.5) {
+    score += 10;
+    notes.push('PBR level: 0.5 or lower');
+  } else if (result.pbr <= 0.75) {
+    score += 9;
+    notes.push('PBR level: 0.75 or lower');
+  } else if (result.pbr <= 1.0) {
+    score += 8;
+    notes.push('PBR level: 1.0 or lower');
+  } else if (result.pbr <= 1.5) {
+    score += 5;
+    notes.push('PBR level: 1.5 or lower');
+  } else if (result.pbr <= 2.0) {
+    score += 3;
+    notes.push('PBR level: 2.0 or lower');
+  } else {
+    notes.push('PBR level: above 2.0');
+  }
+
+  let perDividendScore = 0;
+
+  if (result.per === null) {
+    notes.push('PER: unknown');
+  } else if (result.per > 0 && result.per <= 10) {
+    perDividendScore += 2;
+    notes.push('PER: 10 or lower');
+  } else if (result.per > 0 && result.per <= 15) {
+    perDividendScore += 1;
+    notes.push('PER: 15 or lower');
+  } else if (result.per <= 0) {
+    notes.push('PER: invalid or negative');
+  } else {
+    notes.push('PER: above 15');
+  }
+
+  if (result.dividendYield === null) {
+    notes.push('Dividend yield: unknown');
+  } else if (result.dividendYield >= 0.04) {
+    perDividendScore += 2;
+    notes.push('Dividend yield: 4% or higher');
+  } else if (result.dividendYield >= 0.03) {
+    perDividendScore += 1;
+    notes.push('Dividend yield: 3% or higher');
+  } else {
+    notes.push('Dividend yield: below 3%');
+  }
+
+  score += Math.min(perDividendScore, 4);
+
+  notes.push('Industry average comparison: not implemented');
+  notes.push('Historical range comparison: not implemented');
 
   return {
     score,
@@ -476,7 +548,8 @@ function buildNormalCandidateTsvRow(result: ScreenerResult): string[] {
   ].join(' / ');
 
   const memo = [
-    'v0.3 step5 TSV出力',
+    'v0.3 step6 TSV出力',
+    `割安性仮点数=${result.valueScore}/14`,
     `テクニカル仮点数=${result.technicalScore}/20`,
     '暫定財務指標',
     '調整後株価使用',
@@ -506,7 +579,7 @@ function buildNormalCandidateTsvRow(result: ScreenerResult): string[] {
     formatBoolean(result.middleLineRecovered),
     result.volumeRebound,
     result.ichimokuState,
-    '未実装',
+    formatInteger(result.valueScore),
     '未実装',
     '未実装',
     formatInteger(result.technicalScore),
@@ -562,14 +635,15 @@ function parseTargets(inputTargets?: string[]): ScreenerTarget[] {
 export const PBR_BOLLINGER_SCREENER_DESCRIPTION = `
 Runs a minimal PBR x Bollinger Band screener step for Japanese equities.
 
-v0.3 step 3:
+v0.3 step 6:
 - Fetches daily adjusted OHLCV from J-Quants
 - Calculates Bollinger Band state
 - Calculates volume rebound state
 - Calculates simplified Ichimoku cloud state
 - Fetches provisional financial metrics from EDINET DB
 - Calculates provisional PBR and dividend yield from adjusted close and per-share values
-- Does not calculate scoring or A/B/C classification
+- Calculates provisional value and technical component scores
+- Does not calculate total score or A/B/C classification
 - Does not provide buy/sell recommendations
 
 This tool is for research candidate extraction only.
@@ -620,12 +694,19 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
             volumeRebound: indicators.volumeRebound,
             ichimokuState: indicators.ichimokuState,
           });
+          const valueScore = calculateValueScore({
+            pbr: financialMetrics.pbr,
+            per: financialMetrics.per,
+            dividendYield: financialMetrics.dividendYield,
+          });
 
           const notes = [
-            'v0.3 step 3: technical and provisional financial metrics only',
+            'v0.3 step 6: value and technical component scores only',
             'Uses adjusted OHLCV from existing J-Quants field policy: AdjO/AdjH/AdjL/AdjC/AdjVo',
             'PBR, dividend yield, and per-share derived metrics are provisional',
-            'Scoring and A/B/C classification are not implemented yet',
+            'Value score uses only implemented subitems; industry average and historical range are not implemented',
+            'Technical score is a provisional 20-point component',
+            'Total score and A/B/C classification are not implemented yet',
             'Research candidate extraction only; no buy/sell recommendation',
           ];
 
@@ -648,6 +729,8 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
             dps: financialMetrics.dps,
             technicalScore: technicalScore.score,
             technicalScoreNotes: technicalScore.notes,
+            valueScore: valueScore.score,
+            valueScoreNotes: valueScore.notes,
             bbState: indicators.bbState,
             bbPosition: bollinger?.bbPosition ?? null,
             middle: bollinger?.middle ?? null,
@@ -659,7 +742,12 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
             barCount: bars.length,
             from,
             to: input.to ?? null,
-            notes: [...notes, ...financialMetrics.financialNotes],
+            notes: [
+              ...notes,
+              ...financialMetrics.financialNotes,
+              ...valueScore.notes,
+              ...technicalScore.notes,
+            ],
           };
         } catch (error) {
           return {
@@ -677,6 +765,8 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
             dps: null,
             technicalScore: 0,
             technicalScoreNotes: ['Technical score unavailable because calculation failed'],
+            valueScore: 0,
+            valueScoreNotes: ['Value score unavailable because calculation failed'],
             bbState: 'BB_UNKNOWN',
             bbPosition: null,
             middle: null,
@@ -689,7 +779,7 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
             from,
             to: input.to ?? null,
             notes: [
-              'Failed to fetch or calculate technical and financial metrics',
+              'Failed to fetch or calculate value, technical, and financial metrics',
               error instanceof Error ? error.message : String(error),
               'Research candidate extraction only; no buy/sell recommendation',
             ],
@@ -702,18 +792,19 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
 
     return formatToolResult(
       {
-        version: 'v0.3-step5',
-        scope: 'technical_score_with_financial_metrics_and_tsv',
+        version: 'v0.3-step6',
+        scope: 'value_and_technical_scores_with_financial_metrics_and_tsv',
         targets: targets.map((target) => target.code),
         results,
         tsv,
         notes: [
           'This is not investment advice',
           'No buy/sell recommendation is provided',
+          'Value score is included as a provisional component with a maximum implemented score of 14 points',
           'Technical score is included as a provisional 20-point component',
           'Financial metrics are included as provisional values',
           'TSV output is included for research candidate review',
-          'Total score and A/B/C classification are intentionally not implemented in step 5',
+          'Total score and A/B/C classification are intentionally not implemented in step 6',
         ],
       },
       [],
