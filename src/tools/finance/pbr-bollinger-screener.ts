@@ -2,6 +2,8 @@ import { DynamicStructuredTool } from '@langchain/core/tools';
 import { z } from 'zod';
 import { formatToolResult } from '../types.js';
 import { logger } from '../../utils/logger.js';
+import { api as edinetApi } from './api.js';
+import { resolveEdinetCode } from './resolver.js';
 import {
   calculateTechnicalIndicators,
   type PriceBar,
@@ -22,8 +24,35 @@ type ScreenerTarget = {
 
 type JQuantsDailyBar = Record<string, unknown>;
 
+type FinancialMetrics = {
+  per: number | null;
+  pbr: number | null;
+  dividendYield: number | null;
+  equityRatio: number | null;
+  roe: number | null;
+  bps: number | null;
+  dps: number | null;
+  financialNotes: string[];
+};
+
+function readObject(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
 function getJQuantsApiKey(): string {
   return process.env.JQUANTS_API_KEY || '';
+}
+
+function normalizeSecuritiesCode(code: string): string {
+  const digits = code.replace(/\D/g, '');
+
+  if (/^\d{5}$/.test(digits)) {
+    return digits.slice(0, 4);
+  }
+
+  return digits;
 }
 
 function resolveJQuantsCode(code: string): string {
@@ -158,28 +187,111 @@ async function fetchDailyBars(
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
+async function fetchCompanyInfo(ticker: string): Promise<Record<string, unknown>> {
+  const edinetCode = await resolveEdinetCode(ticker);
+  const { data: response } = await edinetApi.get(`/companies/${edinetCode}`, {});
+  const responseObject = readObject(response);
+  const dataObject = readObject(responseObject?.data);
+
+  return dataObject ?? responseObject ?? {};
+}
+
+function calculateFinancialMetrics(
+  companyInfo: Record<string, unknown>,
+  latestClose: number | null,
+): FinancialMetrics {
+  const latestFinancials = readObject(companyInfo.latest_financials);
+
+  const per = toNumber(latestFinancials?.per);
+  const equityRatio = toNumber(latestFinancials?.equity_ratio_official);
+  const roe = toNumber(latestFinancials?.roe_official);
+  const bps = toNumber(latestFinancials?.bps);
+  const dps = toNumber(latestFinancials?.dividend_per_share);
+
+  const pbr =
+    latestClose !== null && bps !== null && bps > 0
+      ? latestClose / bps
+      : null;
+
+  const dividendYield =
+    latestClose !== null && dps !== null && latestClose > 0
+      ? dps / latestClose
+      : null;
+
+  const financialNotes = [
+    'Financial metrics are v0.3 provisional values',
+    'PBR is calculated from J-Quants adjusted close and EDINET DB BPS',
+    'Dividend yield is calculated from EDINET DB dividend_per_share and J-Quants adjusted close',
+  ];
+
+  if (per === null) {
+    financialNotes.push('PER_NA: latest_financials.per is missing or invalid');
+  }
+
+  if (equityRatio === null) {
+    financialNotes.push('EQUITY_RATIO_NA: latest_financials.equity_ratio_official is missing or invalid');
+  }
+
+  if (roe === null) {
+    financialNotes.push('ROE_NA: latest_financials.roe_official is missing or invalid');
+  }
+
+  if (bps === null) {
+    financialNotes.push('BPS_NA: latest_financials.bps is missing or invalid');
+  }
+
+  if (dps === null) {
+    financialNotes.push('DPS_NA: latest_financials.dividend_per_share is missing or invalid');
+  }
+
+  if (pbr === null) {
+    financialNotes.push('PBR_NA: latestClose or BPS is missing or invalid');
+  }
+
+  if (dividendYield === null) {
+    financialNotes.push('DIVIDEND_YIELD_NA: latestClose or DPS is missing or invalid');
+  }
+
+  return {
+    per,
+    pbr,
+    dividendYield,
+    equityRatio,
+    roe,
+    bps,
+    dps,
+    financialNotes,
+  };
+}
+
 function parseTargets(inputTargets?: string[]): ScreenerTarget[] {
   if (!inputTargets || inputTargets.length === 0) {
     return [...DEFAULT_TARGETS];
   }
 
-  return inputTargets.map((code) => ({
-    code,
-    name:
-      DEFAULT_TARGETS.find((target) => target.code === code)?.name ??
-      'UNKNOWN',
-  }));
+  return inputTargets.map((code) => {
+    const normalizedCode = normalizeSecuritiesCode(code);
+
+    return {
+      code: normalizedCode,
+      name:
+        DEFAULT_TARGETS.find((target) => target.code === normalizedCode)?.name ??
+        'UNKNOWN',
+    };
+  });
 }
 
 export const PBR_BOLLINGER_SCREENER_DESCRIPTION = `
 Runs a minimal PBR x Bollinger Band screener step for Japanese equities.
 
-v0.3 step 2 only:
+v0.3 step 3:
 - Fetches daily adjusted OHLCV from J-Quants
 - Calculates Bollinger Band state
 - Calculates volume rebound state
 - Calculates simplified Ichimoku cloud state
-- Does not calculate PBR, PER, dividends, financial safety, scoring, or A/B/C classification
+- Fetches provisional financial metrics from EDINET DB
+- Calculates provisional PBR and dividend yield from adjusted close and per-share values
+- Does not calculate scoring or A/B/C classification
 - Does not provide buy/sell recommendations
 
 This tool is for research candidate extraction only.
@@ -218,11 +330,17 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
           const bars = await fetchDailyBars(target.code, from, input.to);
           const indicators = calculateTechnicalIndicators(bars);
           const bollinger = indicators.bollinger;
+          const companyInfo = await fetchCompanyInfo(target.code);
+          const financialMetrics = calculateFinancialMetrics(
+            companyInfo,
+            indicators.latestClose,
+          );
 
           const notes = [
-            'v0.3 step 2: technical indicators only',
+            'v0.3 step 3: technical and provisional financial metrics only',
             'Uses adjusted OHLCV from existing J-Quants field policy: AdjO/AdjH/AdjL/AdjC/AdjVo',
-            'Financial data, PBR, PER, dividends, scoring, and A/B/C classification are not implemented yet',
+            'PBR, dividend yield, and per-share derived metrics are provisional',
+            'Scoring and A/B/C classification are not implemented yet',
             'Research candidate extraction only; no buy/sell recommendation',
           ];
 
@@ -236,6 +354,13 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
             latestClose: indicators.latestClose,
             latestVolume: indicators.latestVolume,
             previousClose: indicators.previousClose,
+            per: financialMetrics.per,
+            pbr: financialMetrics.pbr,
+            dividendYield: financialMetrics.dividendYield,
+            equityRatio: financialMetrics.equityRatio,
+            roe: financialMetrics.roe,
+            bps: financialMetrics.bps,
+            dps: financialMetrics.dps,
             bbState: indicators.bbState,
             bbPosition: bollinger?.bbPosition ?? null,
             middle: bollinger?.middle ?? null,
@@ -247,7 +372,7 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
             barCount: bars.length,
             from,
             to: input.to ?? null,
-            notes,
+            notes: [...notes, ...financialMetrics.financialNotes],
           };
         } catch (error) {
           return {
@@ -256,6 +381,13 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
             latestClose: null,
             latestVolume: null,
             previousClose: null,
+            per: null,
+            pbr: null,
+            dividendYield: null,
+            equityRatio: null,
+            roe: null,
+            bps: null,
+            dps: null,
             bbState: 'BB_UNKNOWN',
             bbPosition: null,
             middle: null,
@@ -268,7 +400,7 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
             from,
             to: input.to ?? null,
             notes: [
-              'Failed to fetch or calculate technical indicators',
+              'Failed to fetch or calculate technical and financial metrics',
               error instanceof Error ? error.message : String(error),
               'Research candidate extraction only; no buy/sell recommendation',
             ],
@@ -279,14 +411,15 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
 
     return formatToolResult(
       {
-        version: 'v0.3-step2',
-        scope: 'technical_only',
+        version: 'v0.3-step3',
+        scope: 'technical_and_financial_metrics',
         targets: targets.map((target) => target.code),
         results,
         notes: [
           'This is not investment advice',
           'No buy/sell recommendation is provided',
-          'PBR, financials, scoring, and classification are intentionally not implemented in step 2',
+          'Financial metrics are included as provisional values in step 3',
+          'Scoring and A/B/C classification are intentionally not implemented in step 3',
         ],
       },
       [],
