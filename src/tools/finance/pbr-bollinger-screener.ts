@@ -17,6 +17,44 @@ const DEFAULT_TARGETS = [
   { code: '7974', name: '任天堂' },
 ] as const;
 
+const NORMAL_CANDIDATE_TSV_HEADER = [
+  'コード',
+  '銘柄名',
+  '市場',
+  '業種',
+  '終値',
+  '出来高',
+  '時価総額',
+  'PBR',
+  'PER',
+  '配当利回り',
+  '自己資本比率',
+  'ROE',
+  '営業利益傾向',
+  '純利益傾向',
+  '営業CF傾向',
+  'BB状態',
+  'BB位置',
+  'ミドルライン回復',
+  '出来高反発',
+  '一目状態',
+  '割安性',
+  '財務安全性',
+  '成長改善',
+  'テクニカル',
+  'リスク過熱感',
+  '総合点',
+  '分類',
+  '即除外フラグ',
+  '強警戒フラグ',
+  '減点フラグ',
+  '危険観察フラグ',
+  '注意フラグ',
+  '除外理由',
+  '次に見ること',
+  'メモ',
+] as const;
+
 type ScreenerTarget = {
   code: string;
   name: string;
@@ -33,6 +71,33 @@ type FinancialMetrics = {
   bps: number | null;
   dps: number | null;
   financialNotes: string[];
+};
+
+type ScreenerResult = {
+  code: string;
+  name: string;
+  latestClose: number | null;
+  latestVolume: number | null;
+  previousClose: number | null;
+  per: number | null;
+  pbr: number | null;
+  dividendYield: number | null;
+  equityRatio: number | null;
+  roe: number | null;
+  bps: number | null;
+  dps: number | null;
+  bbState: string;
+  bbPosition: number | null;
+  middle: number | null;
+  upper2: number | null;
+  lower2: number | null;
+  middleLineRecovered: boolean | null;
+  volumeRebound: string;
+  ichimokuState: string;
+  barCount: number;
+  from: string;
+  to: string | null;
+  notes: string[];
 };
 
 function readObject(value: unknown): Record<string, unknown> | null {
@@ -264,6 +329,121 @@ function calculateFinancialMetrics(
   };
 }
 
+function formatNumber(value: number | null, digits = 2): string {
+  return value === null ? 'NA' : value.toFixed(digits);
+}
+
+function formatInteger(value: number | null): string {
+  return value === null ? 'NA' : String(Math.round(value));
+}
+
+function formatPercent(value: number | null, digits = 2): string {
+  return value === null ? 'NA' : `${(value * 100).toFixed(digits)}%`;
+}
+
+function formatBoolean(value: boolean | null): string {
+  if (value === null) {
+    return 'UNKNOWN';
+  }
+
+  return value ? 'true' : 'false';
+}
+
+function escapeTsvValue(value: string): string {
+  return value.replace(/\t/g, ' ').replace(/\r?\n/g, ' ');
+}
+
+function buildNormalCandidateTsvRow(result: ScreenerResult): string[] {
+  const cautionFlags = [
+    '暫定財務指標',
+    '調整後株価使用',
+  ];
+
+  if (result.pbr !== null && result.pbr <= 1) {
+    cautionFlags.push('低PBR警戒');
+  }
+
+  if (result.volumeRebound === 'NO_VOLUME_REBOUND') {
+    cautionFlags.push('出来高反発未確認');
+  }
+
+  if (result.ichimokuState === 'BELOW_CLOUD') {
+    cautionFlags.push('一目雲下');
+  }
+
+  const nextToCheck = [
+    '有報リスク',
+    '決算内容',
+    'PBR低下理由',
+    '業績トレンド',
+  ].join(' / ');
+
+  const memo = [
+    'v0.3 step4 TSV出力',
+    '暫定財務指標',
+    '調整後株価使用',
+    'スコアリング未実装',
+    '分類未実装',
+    '売買判断なし',
+  ].join(' / ');
+
+  return [
+    result.code,
+    result.name,
+    'UNKNOWN',
+    'UNKNOWN',
+    formatNumber(result.latestClose, 2),
+    formatInteger(result.latestVolume),
+    'NA',
+    formatNumber(result.pbr, 2),
+    formatNumber(result.per, 2),
+    formatPercent(result.dividendYield, 2),
+    formatPercent(result.equityRatio, 1),
+    formatPercent(result.roe, 1),
+    '未実装',
+    '未実装',
+    '未実装',
+    result.bbState,
+    formatNumber(result.bbPosition, 4),
+    formatBoolean(result.middleLineRecovered),
+    result.volumeRebound,
+    result.ichimokuState,
+    '未実装',
+    '未実装',
+    '未実装',
+    '未実装',
+    '未実装',
+    '未実装',
+    '未分類',
+    'false',
+    'false',
+    'false',
+    'false',
+    cautionFlags.join(','),
+    '',
+    nextToCheck,
+    memo,
+  ].map(escapeTsvValue);
+}
+
+function buildTsv(results: ScreenerResult[]): {
+  header: readonly string[];
+  rows: string[][];
+  text: string;
+} {
+  const rows = results.map(buildNormalCandidateTsvRow);
+  const text = [
+    NORMAL_CANDIDATE_TSV_HEADER.join('\t'),
+    ...rows.map((row) => row.join('\t')),
+  ].join('\n');
+
+  return {
+    header: NORMAL_CANDIDATE_TSV_HEADER,
+    rows,
+    text,
+  };
+}
+
 function parseTargets(inputTargets?: string[]): ScreenerTarget[] {
   if (!inputTargets || inputTargets.length === 0) {
     return [...DEFAULT_TARGETS];
@@ -324,7 +504,7 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
     const targets = parseTargets(input.codes);
     const from = input.from ?? defaultFromDate();
 
-    const results = await Promise.all(
+    const results: ScreenerResult[] = await Promise.all(
       targets.map(async (target) => {
         try {
           const bars = await fetchDailyBars(target.code, from, input.to);
@@ -409,17 +589,21 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
       }),
     );
 
+    const tsv = buildTsv(results);
+
     return formatToolResult(
       {
-        version: 'v0.3-step3',
-        scope: 'technical_and_financial_metrics',
+        version: 'v0.3-step4',
+        scope: 'technical_and_financial_metrics_with_tsv',
         targets: targets.map((target) => target.code),
         results,
+        tsv,
         notes: [
           'This is not investment advice',
           'No buy/sell recommendation is provided',
-          'Financial metrics are included as provisional values in step 3',
-          'Scoring and A/B/C classification are intentionally not implemented in step 3',
+          'Financial metrics are included as provisional values',
+          'TSV output is included for research candidate review',
+          'Scoring and A/B/C classification are intentionally not implemented in step 4',
         ],
       },
       [],
