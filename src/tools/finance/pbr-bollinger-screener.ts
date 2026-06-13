@@ -73,6 +73,11 @@ type FinancialMetrics = {
   financialNotes: string[];
 };
 
+type TechnicalScore = {
+  score: number;
+  notes: string[];
+};
+
 type ScreenerResult = {
   code: string;
   name: string;
@@ -86,6 +91,8 @@ type ScreenerResult = {
   roe: number | null;
   bps: number | null;
   dps: number | null;
+  technicalScore: number;
+  technicalScoreNotes: string[];
   bbState: string;
   bbPosition: number | null;
   middle: number | null;
@@ -329,6 +336,96 @@ function calculateFinancialMetrics(
   };
 }
 
+function calculateTechnicalScore(result: {
+  bbState: string;
+  bbPosition: number | null;
+  middleLineRecovered: boolean | null;
+  volumeRebound: string;
+  ichimokuState: string;
+}): TechnicalScore {
+  let score = 0;
+  const notes: string[] = [];
+
+  // Bollinger position: max 8
+  switch (result.bbState) {
+    case 'BB_REBOUND':
+      score += 8;
+      notes.push('BB position: rebound from below -2σ');
+      break;
+    case 'BB_LOW_NEAR':
+      score += 6;
+      notes.push('BB position: near or below lower band');
+      break;
+    case 'BB_MIDDLE_RECOVER':
+      score += 5;
+      notes.push('BB position: recovered middle line');
+      break;
+    case 'BB_NEUTRAL':
+      score += 3;
+      notes.push('BB position: neutral');
+      break;
+    case 'BB_DOWN_WALK':
+      score += 1;
+      notes.push('BB position: lower-band down walk caution');
+      break;
+    default:
+      notes.push('BB position: unknown');
+      break;
+  }
+
+  // Rebound from -2σ: max 4
+  if (result.bbState === 'BB_REBOUND') {
+    score += 4;
+    notes.push('-2σ rebound: confirmed');
+  } else {
+    notes.push('-2σ rebound: not confirmed');
+  }
+
+  // Middle line recovery: max 3
+  if (result.middleLineRecovered === true) {
+    score += 3;
+    notes.push('Middle line recovery: confirmed');
+  } else if (result.middleLineRecovered === false) {
+    notes.push('Middle line recovery: not confirmed');
+  } else {
+    notes.push('Middle line recovery: unknown');
+  }
+
+  // Volume confirmation: max 3
+  if (result.volumeRebound === 'STRONG_VOLUME_REBOUND') {
+    score += 3;
+    notes.push('Volume rebound: strong');
+  } else if (result.volumeRebound === 'VOLUME_REBOUND') {
+    score += 2;
+    notes.push('Volume rebound: confirmed');
+  } else if (result.volumeRebound === 'NO_VOLUME_REBOUND') {
+    notes.push('Volume rebound: not confirmed');
+  } else {
+    notes.push('Volume rebound: unknown');
+  }
+
+  // Ichimoku support: max 2
+  if (result.ichimokuState === 'ABOVE_CLOUD') {
+    score += 2;
+    notes.push('Ichimoku: above cloud');
+  } else if (result.ichimokuState === 'CLOUD_BREAK_NEAR') {
+    score += 2;
+    notes.push('Ichimoku: near cloud break');
+  } else if (result.ichimokuState === 'IN_CLOUD') {
+    score += 1;
+    notes.push('Ichimoku: in cloud');
+  } else if (result.ichimokuState === 'BELOW_CLOUD') {
+    notes.push('Ichimoku: below cloud');
+  } else {
+    notes.push('Ichimoku: unknown');
+  }
+
+  return {
+    score,
+    notes,
+  };
+}
+
 function formatNumber(value: number | null, digits = 2): string {
   return value === null ? 'NA' : value.toFixed(digits);
 }
@@ -379,10 +476,11 @@ function buildNormalCandidateTsvRow(result: ScreenerResult): string[] {
   ].join(' / ');
 
   const memo = [
-    'v0.3 step4 TSV出力',
+    'v0.3 step5 TSV出力',
+    `テクニカル仮点数=${result.technicalScore}/20`,
     '暫定財務指標',
     '調整後株価使用',
-    'スコアリング未実装',
+    '総合スコア未実装',
     '分類未実装',
     '売買判断なし',
   ].join(' / ');
@@ -411,7 +509,7 @@ function buildNormalCandidateTsvRow(result: ScreenerResult): string[] {
     '未実装',
     '未実装',
     '未実装',
-    '未実装',
+    formatInteger(result.technicalScore),
     '未実装',
     '未実装',
     '未分類',
@@ -515,6 +613,13 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
             companyInfo,
             indicators.latestClose,
           );
+          const technicalScore = calculateTechnicalScore({
+            bbState: indicators.bbState,
+            bbPosition: bollinger?.bbPosition ?? null,
+            middleLineRecovered: indicators.middleLineRecovered,
+            volumeRebound: indicators.volumeRebound,
+            ichimokuState: indicators.ichimokuState,
+          });
 
           const notes = [
             'v0.3 step 3: technical and provisional financial metrics only',
@@ -541,6 +646,8 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
             roe: financialMetrics.roe,
             bps: financialMetrics.bps,
             dps: financialMetrics.dps,
+            technicalScore: technicalScore.score,
+            technicalScoreNotes: technicalScore.notes,
             bbState: indicators.bbState,
             bbPosition: bollinger?.bbPosition ?? null,
             middle: bollinger?.middle ?? null,
@@ -568,6 +675,8 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
             roe: null,
             bps: null,
             dps: null,
+            technicalScore: 0,
+            technicalScoreNotes: ['Technical score unavailable because calculation failed'],
             bbState: 'BB_UNKNOWN',
             bbPosition: null,
             middle: null,
@@ -593,17 +702,18 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
 
     return formatToolResult(
       {
-        version: 'v0.3-step4',
-        scope: 'technical_and_financial_metrics_with_tsv',
+        version: 'v0.3-step5',
+        scope: 'technical_score_with_financial_metrics_and_tsv',
         targets: targets.map((target) => target.code),
         results,
         tsv,
         notes: [
           'This is not investment advice',
           'No buy/sell recommendation is provided',
+          'Technical score is included as a provisional 20-point component',
           'Financial metrics are included as provisional values',
           'TSV output is included for research candidate review',
-          'Scoring and A/B/C classification are intentionally not implemented in step 4',
+          'Total score and A/B/C classification are intentionally not implemented in step 5',
         ],
       },
       [],
