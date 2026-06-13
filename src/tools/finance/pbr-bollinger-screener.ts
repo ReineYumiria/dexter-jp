@@ -88,6 +88,11 @@ type SafetyScore = {
   notes: string[];
 };
 
+type RiskScore = {
+  score: number;
+  notes: string[];
+};
+
 type ScreenerResult = {
   code: string;
   name: string;
@@ -107,6 +112,8 @@ type ScreenerResult = {
   valueScoreNotes: string[];
   safetyScore: number;
   safetyScoreNotes: string[];
+  riskScore: number;
+  riskScoreNotes: string[];
   bbState: string;
   bbPosition: number | null;
   middle: number | null;
@@ -556,6 +563,65 @@ function calculateSafetyScore(result: {
   };
 }
 
+function calculateRiskScore(result: {
+  bbState: string;
+  latestVolume: number | null;
+}): RiskScore {
+  let score = 0;
+  const notes: string[] = [];
+
+  // Not overheated / not aggressively extended: max 4
+  switch (result.bbState) {
+    case 'BB_NEUTRAL':
+      score += 4;
+      notes.push('Overheat check: neutral');
+      break;
+    case 'BB_LOW_NEAR':
+      score += 3;
+      notes.push('Overheat check: low zone, not overheated');
+      break;
+    case 'BB_REBOUND':
+      score += 3;
+      notes.push('Overheat check: rebound, not overheated');
+      break;
+    case 'BB_MIDDLE_RECOVER':
+      score += 2;
+      notes.push('Overheat check: middle recovery after decline');
+      break;
+    case 'BB_DOWN_WALK':
+      notes.push('Overheat check: down walk caution');
+      break;
+    default:
+      notes.push('Overheat check: unknown');
+      break;
+  }
+
+  // Minimum liquidity: max 3
+  if (result.latestVolume === null) {
+    notes.push('Liquidity: unknown');
+  } else if (result.latestVolume >= 5_000_000) {
+    score += 3;
+    notes.push('Liquidity: 5,000,000 shares or more');
+  } else if (result.latestVolume >= 1_000_000) {
+    score += 2;
+    notes.push('Liquidity: 1,000,000 shares or more');
+  } else if (result.latestVolume >= 300_000) {
+    score += 1;
+    notes.push('Liquidity: 300,000 shares or more');
+  } else {
+    notes.push('Liquidity: below 300,000 shares');
+  }
+
+  notes.push('Securities report risk tolerance: not implemented');
+  notes.push('Industry headwind weakness: not implemented');
+  notes.push('Undiscovered / low-hype check: not implemented');
+
+  return {
+    score,
+    notes,
+  };
+}
+
 function formatNumber(value: number | null, digits = 2): string {
   return value === null ? 'NA' : value.toFixed(digits);
 }
@@ -606,10 +672,11 @@ function buildNormalCandidateTsvRow(result: ScreenerResult): string[] {
   ].join(' / ');
 
   const memo = [
-    'v0.3 step7 TSV出力',
+    'v0.3 step8 TSV出力',
     `割安性仮点数=${result.valueScore}/14`,
     `財務安全性仮点数=${result.safetyScore}/8`,
     `テクニカル仮点数=${result.technicalScore}/20`,
+    `リスク過熱感仮点数=${result.riskScore}/7`,
     '暫定財務指標',
     '調整後株価使用',
     '総合スコア未実装',
@@ -642,7 +709,7 @@ function buildNormalCandidateTsvRow(result: ScreenerResult): string[] {
     formatInteger(result.safetyScore),
     '未実装',
     formatInteger(result.technicalScore),
-    '未実装',
+    formatInteger(result.riskScore),
     '未実装',
     '未分類',
     'false',
@@ -694,7 +761,7 @@ function parseTargets(inputTargets?: string[]): ScreenerTarget[] {
 export const PBR_BOLLINGER_SCREENER_DESCRIPTION = `
 Runs a minimal PBR x Bollinger Band screener step for Japanese equities.
 
-v0.3 step 7:
+v0.3 step 8:
 - Fetches daily adjusted OHLCV from J-Quants
 - Calculates Bollinger Band state
 - Calculates volume rebound state
@@ -703,6 +770,7 @@ v0.3 step 7:
 - Calculates provisional PBR and dividend yield from adjusted close and per-share values
 - Calculates provisional value, financial safety, and technical component scores
 - Calculates provisional financial safety component score from implemented fields only
+- Calculates provisional risk / overheat component score from implemented fields only
 - Does not calculate total score or A/B/C classification
 - Does not provide buy/sell recommendations
 
@@ -763,6 +831,10 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
             equityRatio: financialMetrics.equityRatio,
             roe: financialMetrics.roe,
           });
+          const riskScore = calculateRiskScore({
+            bbState: indicators.bbState,
+            latestVolume: indicators.latestVolume,
+          });
 
           const notes = [
             'v0.3 step 7: value, financial safety, and technical component scores only',
@@ -798,6 +870,8 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
             valueScoreNotes: valueScore.notes,
             safetyScore: safetyScore.score,
             safetyScoreNotes: safetyScore.notes,
+            riskScore: riskScore.score,
+            riskScoreNotes: riskScore.notes,
             bbState: indicators.bbState,
             bbPosition: bollinger?.bbPosition ?? null,
             middle: bollinger?.middle ?? null,
@@ -837,6 +911,8 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
             valueScoreNotes: ['Value score unavailable because calculation failed'],
             safetyScore: 0,
             safetyScoreNotes: ['Safety score unavailable because calculation failed'],
+            riskScore: 0,
+            riskScoreNotes: ['Risk / overheat score unavailable because calculation failed'],
             bbState: 'BB_UNKNOWN',
             bbPosition: null,
             middle: null,
@@ -862,8 +938,8 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
 
     return formatToolResult(
       {
-        version: 'v0.3-step7',
-        scope: 'value_safety_technical_scores_with_financial_metrics_and_tsv',
+        version: 'v0.3-step8',
+        scope: 'value_safety_technical_risk_scores_with_financial_metrics_and_tsv',
         targets: targets.map((target) => target.code),
         results,
         tsv,
@@ -873,9 +949,10 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
           'Value score is included as a provisional component with a maximum implemented score of 14 points',
           'Financial safety score is included as a provisional component with a maximum implemented score of 8 points',
           'Technical score is included as a provisional 20-point component',
+          'Risk / overheat score is included as a provisional component with a maximum implemented score of 7 points',
           'Financial metrics are included as provisional values',
           'TSV output is included for research candidate review',
-          'Total score and A/B/C classification are intentionally not implemented in step 7',
+          'Total score and A/B/C classification are intentionally not implemented in step 8',
         ],
       },
       [],
