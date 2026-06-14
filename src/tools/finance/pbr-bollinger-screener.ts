@@ -1204,6 +1204,32 @@ Threshold guard rule draft:
 - Do not encode buy/sell/hold decisions
 - Keep thresholds adjustable after spreadsheet review
 
+v0.4 step 18:
+- Defines classification threshold type design before implementing threshold constants
+- Threshold type should group risk, safety, value, technical, caution-flag, data-quality, and liquidity-related rule materials
+- Threshold type must not include totalScore or investment-rank fields
+- Threshold constants should remain adjustable after spreadsheet review
+- Threshold constants should support research classification only, not buy/sell judgment
+
+Classification threshold type draft:
+- ResearchClassificationThresholds:
+  - risk: dangerObservationMinRiskScore, strongCautionMinRiskScore
+  - safety: minimumSafetyScoreForPriorityResearch, weakSafetyScoreThreshold
+  - value: minimumValueScoreForPriorityResearch
+  - technical: minimumTechnicalScoreForPriorityResearch
+  - cautionFlags: strongCautionFlagCount, dangerObservationFlagCount
+  - dataQuality: maxMissingFieldsForNormalCandidate, maxUnusableIndicatorsForNormalCandidate
+  - liquidity: lowLiquidityFlagCountForCaution, lowLiquidityFlagCountForDangerObservation
+  - decline: sharpDeclineFlagCountForCaution, sharpDeclineFlagCountForDangerObservation
+
+Threshold type guard rule draft:
+- Do not add totalScore to threshold design
+- Do not add buy/sell/hold thresholds
+- Do not add A/B/C rank thresholds as primary output
+- Do not allow value or technical thresholds to bypass risk or data-quality thresholds
+- Keep exclusion and danger-observation thresholds evaluated before priority-research thresholds
+- Keep threshold names research-oriented and conservative
+
 Guard rule:
 No positive research label may override exclusion, danger-observation, or strong-caution conditions.
 
