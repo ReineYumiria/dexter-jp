@@ -1168,6 +1168,16 @@ Input type guard rule draft:
 - Keep reason generation separate from score calculation
 - Keep output bucket decisions separate from score values
 
+v0.4 step 16:
+- Adds ResearchClassificationInput TypeScript type based on the input type design
+- Groups classification input into identity, valuation, safety, technical, risk, dataConfidence, and outputPolicy sections
+- Keeps component scores and caution flags independently available
+- Does not add totalScore, buy/sell/hold fields, or A/B/C rank output
+- Keeps classification logic unimplemented
+- Does not change TSV output
+- Does not calculate total score
+- Does not provide buy/sell recommendations
+
 Guard rule:
 No positive research label may override exclusion, danger-observation, or strong-caution conditions.
 
