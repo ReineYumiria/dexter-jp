@@ -162,6 +162,25 @@ describe('classifyResearchCandidate', () => {
     expect(result.code).toBe('STRONG_CAUTION');
   });
 
+  test('returns LOW_PRIORITY_OBSERVATION when value and safety materials are weak', () => {
+    const result = classifyResearchCandidate(
+      createClassificationInput({
+        valuation: {
+          valueScore:
+            DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS.value
+              .minimumValueScoreForPriorityResearch - 1,
+        },
+        safety: {
+          safetyScore:
+            DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS.safety
+              .minimumSafetyScoreForPriorityResearch - 1,
+        },
+      }),
+    );
+
+    expect(result.code).toBe('LOW_PRIORITY_OBSERVATION');
+  });
+
   test('returns NORMAL_OBSERVATION when no negative condition applies', () => {
     const result = classifyResearchCandidate(createClassificationInput());
 

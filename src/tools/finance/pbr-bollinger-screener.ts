@@ -261,6 +261,13 @@ export function classifyResearchCandidate(
     input.risk.abnormalIndicatorFlags.length;
   const lowLiquidityFlagCount = input.risk.lowLiquidityFlags.length;
   const sharpDeclineFlagCount = input.risk.sharpDeclineContext.length;
+  const hasLowPbrContext =
+    input.valuation.pbr !== null &&
+    input.valuation.pbr > 0 &&
+    input.valuation.pbr <= thresholds.value.maximumPbrForPriorityResearch;
+  const hasLowerBandOrRebound =
+    input.technical.bbState === 'BB_LOW_NEAR' ||
+    input.technical.bbState === 'BB_REBOUND';
 
   // Decision order skeleton:
   // 1. Exclusion
@@ -353,7 +360,36 @@ export function classifyResearchCandidate(
   }
 
   // 4. Priority research: intentionally not implemented in this step.
-  // 5. Low-priority observation: intentionally not implemented in this step.
+  // 5. Low-priority observation
+  if (
+    input.valuation.valueScore <
+      thresholds.value.minimumValueScoreForPriorityResearch &&
+    input.safety.safetyScore <
+      thresholds.safety.minimumSafetyScoreForPriorityResearch
+  ) {
+    return createResult('LOW_PRIORITY_OBSERVATION', '価値と安全性の材料が弱いため低優先観察。');
+  }
+
+  if (
+    missingFieldCount >
+      thresholds.dataQuality.maxMissingFieldsForNormalCandidate ||
+    unusableIndicatorCount >
+      thresholds.dataQuality.maxUnusableIndicatorsForNormalCandidate
+  ) {
+    return createResult('LOW_PRIORITY_OBSERVATION', 'データ品質が通常観察の基準を超えるため低優先観察。');
+  }
+
+  if (
+    !hasLowPbrContext &&
+    !hasLowerBandOrRebound &&
+    input.valuation.valueScore <
+      thresholds.value.minimumValueScoreForPriorityResearch &&
+    input.technical.technicalScore <
+      thresholds.technical.minimumTechnicalScoreForPriorityResearch
+  ) {
+    return createResult('LOW_PRIORITY_OBSERVATION', '研究材料が薄いため低優先観察。');
+  }
+
   // 6. Normal observation
   return createResult('NORMAL_OBSERVATION', '研究整理用フォールバック。詳細分類は未実装。');
 }
