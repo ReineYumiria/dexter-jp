@@ -795,6 +795,7 @@ v0.3.1 step 5:
 - Clarifies provisional calculation sources for PBR and dividend yield
 - Adds display labels for BB states while keeping internal enum values unchanged
 - Keeps TSV memo compact and moves detailed warnings to caution flags and notes
+- Confirms TSV output is intended for spreadsheet paste workflow
 - Does not calculate total score or A/B/C classification
 - Does not provide buy/sell recommendations
 
