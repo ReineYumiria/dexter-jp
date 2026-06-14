@@ -236,25 +236,126 @@ export function classifyResearchCandidate(
   input: ResearchClassificationInput,
   thresholds: ResearchClassificationThresholds = DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS,
 ): ResearchClassificationResult {
-  void input;
-  void thresholds;
+  const createResult = (
+    code: ResearchClassificationCode,
+    reason: string,
+  ): ResearchClassificationResult => {
+    const metadata = RESEARCH_CLASSIFICATION_METADATA[code];
+
+    return {
+      code,
+      label: metadata.label,
+      reason,
+      cautionBucket: metadata.cautionBucket,
+      outputBucket: metadata.outputBucket,
+    };
+  };
+
+  const missingFieldCount = input.dataConfidence.missingFields.length;
+  const unusableIndicatorCount =
+    input.dataConfidence.unusableIndicatorReasons.length;
+  const cautionFlagCount =
+    input.risk.cautionFlags.length +
+    input.safety.financialCautionFlags.length +
+    input.technical.technicalCautionFlags.length +
+    input.risk.abnormalIndicatorFlags.length;
+  const lowLiquidityFlagCount = input.risk.lowLiquidityFlags.length;
+  const sharpDeclineFlagCount = input.risk.sharpDeclineContext.length;
 
   // Decision order skeleton:
   // 1. Exclusion
-  // 2. Danger observation
-  // 3. Strong caution
-  // 4. Priority research
-  // 5. Low-priority observation
-  // 6. Normal observation
-  const metadata = RESEARCH_CLASSIFICATION_METADATA.NORMAL_OBSERVATION;
+  if (input.outputPolicy.shouldExcludeByDefault) {
+    return createResult('EXCLUDED', '出力方針により除外。');
+  }
 
-  return {
-    code: 'NORMAL_OBSERVATION',
-    label: metadata.label,
-    reason: '研究整理用フォールバック。詳細分類は未実装。',
-    cautionBucket: metadata.cautionBucket,
-    outputBucket: metadata.outputBucket,
-  };
+  if (missingFieldCount >= thresholds.dataQuality.missingFieldCountForExclusion) {
+    return createResult('EXCLUDED', '欠損項目が多いため除外。');
+  }
+
+  if (
+    unusableIndicatorCount >=
+    thresholds.dataQuality.unusableIndicatorCountForExclusion
+  ) {
+    return createResult('EXCLUDED', '利用不可指標が多いため除外。');
+  }
+
+  if (
+    !input.outputPolicy.canUseNormalCandidateTsv &&
+    !input.outputPolicy.canUseDangerObservationTsv
+  ) {
+    return createResult('EXCLUDED', '出力先条件に合わないため除外。');
+  }
+
+  // 2. Danger observation
+  if (!input.outputPolicy.canUseNormalCandidateTsv) {
+    return createResult('DANGER_OBSERVATION', '通常候補TSV対象外のため危険観察。');
+  }
+
+  if (input.risk.riskScore <= thresholds.risk.dangerObservationMaxRiskScore) {
+    return createResult('DANGER_OBSERVATION', 'riskScore が低いため危険観察。');
+  }
+
+  if (cautionFlagCount >= thresholds.cautionFlags.dangerObservationFlagCount) {
+    return createResult('DANGER_OBSERVATION', '警戒フラグが多いため危険観察。');
+  }
+
+  if (
+    missingFieldCount >=
+    thresholds.dataQuality.missingFieldCountForDangerObservation
+  ) {
+    return createResult('DANGER_OBSERVATION', '欠損項目が多いため危険観察。');
+  }
+
+  if (
+    unusableIndicatorCount >=
+    thresholds.dataQuality.unusableIndicatorCountForDangerObservation
+  ) {
+    return createResult('DANGER_OBSERVATION', '利用不可指標が多いため危険観察。');
+  }
+
+  if (
+    lowLiquidityFlagCount >=
+    thresholds.liquidity.lowLiquidityFlagCountForDangerObservation
+  ) {
+    return createResult('DANGER_OBSERVATION', '低流動性フラグが多いため危険観察。');
+  }
+
+  if (
+    sharpDeclineFlagCount >=
+    thresholds.decline.sharpDeclineFlagCountForDangerObservation
+  ) {
+    return createResult('DANGER_OBSERVATION', '急落文脈が多いため危険観察。');
+  }
+
+  // 3. Strong caution
+  if (input.risk.riskScore <= thresholds.risk.strongCautionMaxRiskScore) {
+    return createResult('STRONG_CAUTION', 'riskScore が低いため強警戒。');
+  }
+
+  if (input.safety.safetyScore <= thresholds.safety.weakSafetyScoreThreshold) {
+    return createResult('STRONG_CAUTION', '安全性スコアが低いため強警戒。');
+  }
+
+  if (cautionFlagCount >= thresholds.cautionFlags.strongCautionFlagCount) {
+    return createResult('STRONG_CAUTION', '警戒フラグが複数あるため強警戒。');
+  }
+
+  if (
+    lowLiquidityFlagCount >= thresholds.liquidity.lowLiquidityFlagCountForCaution
+  ) {
+    return createResult('STRONG_CAUTION', '低流動性フラグがあるため強警戒。');
+  }
+
+  if (
+    sharpDeclineFlagCount >= thresholds.decline.sharpDeclineFlagCountForCaution
+  ) {
+    return createResult('STRONG_CAUTION', '急落文脈があるため強警戒。');
+  }
+
+  // 4. Priority research: intentionally not implemented in this step.
+  // 5. Low-priority observation: intentionally not implemented in this step.
+  // 6. Normal observation
+  return createResult('NORMAL_OBSERVATION', '研究整理用フォールバック。詳細分類は未実装。');
 }
 
 const JQUANTS_BASE = 'https://api.jquants.com/v2';
