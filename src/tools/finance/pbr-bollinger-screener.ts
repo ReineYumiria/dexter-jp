@@ -1094,6 +1094,30 @@ Input guard rule draft:
 - Classification input must allow exclusion and danger-observation checks to run before positive research labels
 - Classification input must support short, spreadsheet-friendly classification reasons
 
+v0.4 step 15:
+- Defines classification input type design before implementing TypeScript input types
+- Input type should group candidate identity, valuation, safety, technical, risk, data confidence, and output context
+- Input type should avoid a single totalScore field
+- Input type should keep component scores and caution flags independently available
+- Input type should support exclusion and danger-observation checks before positive research labels
+
+Classification input type draft:
+- ResearchClassificationInput:
+  - identity: candidate code, name, market, and optional identifiers
+  - valuation: PBR, PER, dividend yield, BPS, DPS, valueScore, and provisional source notes
+  - safety: equity ratio, ROE, safetyScore, and financial caution flags
+  - technical: BB state, BB position, volume reaction, Ichimoku summary, technicalScore, and technical caution flags
+  - risk: riskScore, caution flags, abnormal indicator flags, low-liquidity flags, and sharp-decline context
+  - dataConfidence: missing fields, unreliable fields, unusable indicator reasons, and calculation confidence notes
+  - outputPolicy: canUseNormalCandidateTsv, canUseDangerObservationTsv, shouldExcludeByDefault
+
+Input type guard rule draft:
+- Do not add totalScore to ResearchClassificationInput
+- Do not add buy/sell/hold fields
+- Do not encode A/B/C ranking as primary output
+- Keep reason generation separate from score calculation
+- Keep output bucket decisions separate from score values
+
 Guard rule:
 No positive research label may override exclusion, danger-observation, or strong-caution conditions.
 
