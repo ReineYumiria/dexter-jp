@@ -695,7 +695,7 @@ function buildNormalCandidateTsvRow(result: ScreenerResult): string[] {
   ].join(' / ');
 
   const memo = [
-    'v0.3.1 step4',
+    'v0.3.1 step5',
     `部品点 V=${result.valueScore}/14 S=${result.safetyScore}/8 T=${result.technicalScore}/20 R=${result.riskScore}/7`,
     '合算禁止',
     '暫定指標は注意フラグ参照',
@@ -781,7 +781,7 @@ function parseTargets(inputTargets?: string[]): ScreenerTarget[] {
 export const PBR_BOLLINGER_SCREENER_DESCRIPTION = `
 Runs a minimal PBR x Bollinger Band screener step for Japanese equities.
 
-v0.3.1 step 4:
+v0.3.1 step 5:
 - Fetches daily adjusted OHLCV from J-Quants
 - Calculates Bollinger Band state
 - Calculates volume rebound state
@@ -964,8 +964,8 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
 
     return formatToolResult(
       {
-        version: 'v0.3.1-step4',
-        scope: 'component_scores_with_compact_tsv_memo',
+        version: 'v0.3.1-step5',
+        scope: 'spreadsheet_ready_component_scores_tsv',
         targets: targets.map((target) => target.code),
         results,
         tsv,
@@ -985,7 +985,8 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
           'Financial metrics are included as provisional values',
           'TSV output is included for research candidate review',
           'TSV memo is intentionally compact; check caution flags and notes for detailed warnings',
-          'Total score and A/B/C classification are intentionally not implemented in v0.3.1 step 4',
+          'TSV output is intended for spreadsheet paste workflow',
+          'Total score and A/B/C classification are intentionally not implemented in v0.3.1 step 5',
         ],
       },
       [],
