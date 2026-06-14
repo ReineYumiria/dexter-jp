@@ -95,6 +95,103 @@ export type ResearchClassificationInput = {
   };
 };
 
+export type ResearchClassificationThresholds = {
+  // In this module, riskScore measures risk control / observability.
+  // Higher is safer or easier to observe; lower leans caution / danger observation.
+  // It is not a trading judgment.
+  risk: {
+    dangerObservationMaxRiskScore: number;
+    strongCautionMaxRiskScore: number;
+    minimumRiskScoreForNormalCandidate: number;
+    minimumRiskScoreForPriorityResearch: number;
+  };
+  safety: {
+    weakSafetyScoreThreshold: number;
+    minimumSafetyScoreForNormalCandidate: number;
+    minimumSafetyScoreForPriorityResearch: number;
+  };
+  value: {
+    maximumPbrForPriorityResearch: number;
+    minimumValueScoreForPriorityResearch: number;
+  };
+  technical: {
+    minimumTechnicalScoreForPriorityResearch: number;
+  };
+  cautionFlags: {
+    strongCautionFlagCount: number;
+    dangerObservationFlagCount: number;
+    maximumFlagCountForPriorityResearch: number;
+  };
+  dataQuality: {
+    maxMissingFieldsForNormalCandidate: number;
+    maxMissingFieldsForPriorityResearch: number;
+    missingFieldCountForDangerObservation: number;
+    missingFieldCountForExclusion: number;
+    maxUnusableIndicatorsForNormalCandidate: number;
+    maxUnusableIndicatorsForPriorityResearch: number;
+    unusableIndicatorCountForDangerObservation: number;
+    unusableIndicatorCountForExclusion: number;
+  };
+  liquidity: {
+    lowLiquidityFlagCountForCaution: number;
+    lowLiquidityFlagCountForDangerObservation: number;
+    maxLowLiquidityFlagCountForPriorityResearch: number;
+  };
+  decline: {
+    sharpDeclineFlagCountForCaution: number;
+    sharpDeclineFlagCountForDangerObservation: number;
+    maxSharpDeclineFlagCountForPriorityResearch: number;
+  };
+};
+
+// Thresholds are intentionally non-additive: low PBR, lower-band contact,
+// or technical rebound must not create priority research by itself.
+export const DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS = {
+  risk: {
+    dangerObservationMaxRiskScore: 1,
+    strongCautionMaxRiskScore: 2,
+    minimumRiskScoreForNormalCandidate: 3,
+    minimumRiskScoreForPriorityResearch: 5,
+  },
+  safety: {
+    weakSafetyScoreThreshold: 2,
+    minimumSafetyScoreForNormalCandidate: 3,
+    minimumSafetyScoreForPriorityResearch: 5,
+  },
+  value: {
+    maximumPbrForPriorityResearch: 1.0,
+    minimumValueScoreForPriorityResearch: 8,
+  },
+  technical: {
+    minimumTechnicalScoreForPriorityResearch: 10,
+  },
+  cautionFlags: {
+    strongCautionFlagCount: 2,
+    dangerObservationFlagCount: 4,
+    maximumFlagCountForPriorityResearch: 0,
+  },
+  dataQuality: {
+    maxMissingFieldsForNormalCandidate: 3,
+    maxMissingFieldsForPriorityResearch: 0,
+    missingFieldCountForDangerObservation: 5,
+    missingFieldCountForExclusion: 8,
+    maxUnusableIndicatorsForNormalCandidate: 1,
+    maxUnusableIndicatorsForPriorityResearch: 0,
+    unusableIndicatorCountForDangerObservation: 2,
+    unusableIndicatorCountForExclusion: 4,
+  },
+  liquidity: {
+    lowLiquidityFlagCountForCaution: 1,
+    lowLiquidityFlagCountForDangerObservation: 2,
+    maxLowLiquidityFlagCountForPriorityResearch: 0,
+  },
+  decline: {
+    sharpDeclineFlagCountForCaution: 1,
+    sharpDeclineFlagCountForDangerObservation: 2,
+    maxSharpDeclineFlagCountForPriorityResearch: 0,
+  },
+} as const satisfies ResearchClassificationThresholds;
+
 export const RESEARCH_CLASSIFICATION_METADATA = {
   EXCLUDED: {
     label: '除外',
