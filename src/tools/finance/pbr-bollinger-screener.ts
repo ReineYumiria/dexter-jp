@@ -831,6 +831,20 @@ Classification decision order:
 5. 通常観察: Use when some signals are present but confirmation points remain.
 6. 低優先観察: Use when signal alignment is weak or research priority is low.
 
+v0.4 step 3:
+- Defines concrete exclusion conditions before implementing classification logic
+- Exclusion rules are applied before danger-observation, caution, or positive research-priority labels
+- Exclusion means "outside the current research target", not "sell" or "bad company"
+- Excluded items should not be mixed into normal candidate TSV output unless explicitly requested
+
+Exclusion condition draft:
+- Missing essential price data required for BB or technical calculations
+- Missing essential financial indicators required for valuation or safety checks
+- Abnormal or unusable indicator values, such as negative or zero BPS when PBR-based screening is required
+- Extremely low liquidity where price reaction signals may be unreliable
+- Security is outside the current research scope
+- Calculation result contains insufficient confidence for normal comparison
+
 Guard rule:
 No positive research label may override exclusion, danger-observation, or strong-caution conditions.
 
