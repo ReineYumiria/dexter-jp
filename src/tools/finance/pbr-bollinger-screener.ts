@@ -1230,6 +1230,20 @@ Threshold type guard rule draft:
 - Keep exclusion and danger-observation thresholds evaluated before priority-research thresholds
 - Keep threshold names research-oriented and conservative
 
+v0.4 completion:
+- Completes pre-implementation safety design for research classification
+- Defines research classification labels, decision order, exclusion, danger-observation, strong-caution, priority-research, normal-observation, and low-priority-observation meanings
+- Defines TSV separation policy and Japanese spreadsheet display column design
+- Defines internal classification codes and metadata mapping
+- Adds ResearchClassificationResult and ResearchClassificationInput TypeScript types
+- Documents helper function design, input design, input type design, threshold design, and threshold type design
+- Keeps component scores non-additive
+- Keeps total score unimplemented
+- Keeps classification logic unimplemented
+- Keeps TSV output unchanged
+- Keeps buy/sell recommendations unimplemented
+- Next version may consider threshold constants and classification helper implementation under the same safety rules
+
 Guard rule:
 No positive research label may override exclusion, danger-observation, or strong-caution conditions.
 
