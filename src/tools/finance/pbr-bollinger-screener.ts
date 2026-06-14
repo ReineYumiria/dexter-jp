@@ -816,6 +816,24 @@ Research classification label definitions:
 - 危険観察: Useful for research, but prone to misuse as an investment signal; should be separated from normal candidates.
 - 除外: Outside the current research target due to missing data, abnormal indicators, low liquidity, weak safety, or rule mismatch.
 
+v0.4 step 2:
+- Defines classification decision order before implementing classification output
+- Applies exclusion and danger-observation rules before any positive research label
+- Keeps "優先深掘り" as a research-priority label only
+- Does not output classification columns yet
+- Does not calculate total score yet
+
+Classification decision order:
+1. 除外: Remove from normal research candidates when data is insufficient, indicators are abnormal, liquidity is too low, or the company does not match the current research scope.
+2. 危険観察: Separate from normal candidates when low valuation or technical reaction exists but the signal is likely to be misused, such as sharp decline, extreme risk, severe financial weakness, or unstable data.
+3. 強警戒: Keep visible as a caution-heavy research item when attractive-looking signals exist but important warnings are present.
+4. 優先深掘り: Use only when valuation, financial safety, and technical reaction signals are relatively aligned and risk warnings are not dominant.
+5. 通常観察: Use when some signals are present but confirmation points remain.
+6. 低優先観察: Use when signal alignment is weak or research priority is low.
+
+Guard rule:
+No positive research label may override exclusion, danger-observation, or strong-caution conditions.
+
 This tool is for research candidate extraction only.
 `.trim();
 
