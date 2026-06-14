@@ -1047,6 +1047,15 @@ Type design draft:
 - ResearchOutputBucket: 通常候補TSV | 危険観察TSV | 除外
 - ResearchClassificationResult: code, label, reason, cautionBucket, outputBucket
 
+v0.4 step 12:
+- Adds TypeScript classification types and metadata map
+- Adds ResearchClassificationCode, ResearchClassificationLabel, ResearchCautionBucket, ResearchOutputBucket, and ResearchClassificationResult
+- Adds RESEARCH_CLASSIFICATION_METADATA for code-to-label, caution bucket, and output bucket mapping
+- Keeps classification logic unimplemented
+- Does not change TSV output
+- Does not calculate total score
+- Does not provide buy/sell recommendations
+
 Guard rule:
 No positive research label may override exclusion, danger-observation, or strong-caution conditions.
 
