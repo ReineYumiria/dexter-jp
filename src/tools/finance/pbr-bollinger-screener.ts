@@ -1072,6 +1072,28 @@ Classification helper draft:
 - Reason field should be short and spreadsheet-friendly
 - Classification should be treated as research organization only
 
+v0.4 step 14:
+- Defines classification input design before implementing helper logic
+- Classification input should use existing component scores and caution context without merging them into a total investment score
+- Input design should preserve separation between value, safety, technical, risk, data quality, and output-bucket decisions
+- Missing or unreliable data must remain visible to the classification helper
+- Input design must not imply buy/sell judgment or investment ranking
+
+Classification input draft:
+- Candidate identity: code, name, market, and available company identifiers
+- Valuation context: PBR, PER, dividend yield, BPS, DPS, and valueScore
+- Safety context: equity ratio, ROE, safetyScore, and financial caution flags
+- Technical context: BB state, BB position, volume reaction, Ichimoku summary, and technicalScore
+- Risk context: riskScore, caution flags, abnormal indicator flags, low-liquidity flags, and sharp-decline context
+- Data confidence context: missing data, provisional source notes, calculation confidence, and unusable indicator reasons
+- Output context: whether the item can remain in normal candidate TSV, should move to danger-observation TSV, or should be excluded
+
+Input guard rule draft:
+- Classification input must not collapse component scores into a single total score
+- Classification input must keep caution flags available even when value or technical signals look favorable
+- Classification input must allow exclusion and danger-observation checks to run before positive research labels
+- Classification input must support short, spreadsheet-friendly classification reasons
+
 Guard rule:
 No positive research label may override exclusion, danger-observation, or strong-caution conditions.
 
