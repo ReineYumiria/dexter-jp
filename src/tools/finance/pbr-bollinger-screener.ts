@@ -874,6 +874,22 @@ Strong-caution condition draft:
 - Profitability or capital safety indicators require additional confirmation
 - Multiple minor caution flags exist across value, safety, technical, or data reliability
 
+v0.4 step 6:
+- Defines priority-research conditions before implementing classification logic
+- Priority-research means "優先深掘り", not buy candidate or investment rank
+- Priority-research can only be assigned after exclusion, danger-observation, and strong-caution checks
+- Priority-research requires aligned signals across valuation, safety, and technical context
+- Low PBR alone, BB lower-band contact alone, or technical rebound alone is insufficient
+
+Priority-research condition draft:
+- valueScore is relatively favorable, but not used alone
+- safetyScore is sufficient and no severe financial caution dominates
+- technicalScore shows supportive reaction context, but not as a standalone reason
+- riskScore is not dominant and strong caution flags are not present
+- PBR-based undervaluation is supported by usable BPS and financial data
+- Volume or trend context provides enough confirmation for research prioritization
+- Candidate remains a research target requiring human review
+
 Guard rule:
 No positive research label may override exclusion, danger-observation, or strong-caution conditions.
 
