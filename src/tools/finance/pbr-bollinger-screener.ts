@@ -925,6 +925,20 @@ TSV separation draft:
 - Strong-caution items: may remain in default TSV only if clearly labeled and not treated as positive candidates
 - Priority-research / normal-observation / low-priority-observation: may share the normal candidate TSV if labels are explicitly research-priority labels
 
+v0.4 step 9:
+- Defines display column names before implementing classification output
+- Classification columns should use Japanese labels in spreadsheet output
+- A/B/C-style rank labels should not be shown as primary display labels
+- Classification columns are for research organization only, not investment judgment
+- Column design must keep normal candidates and danger-observation items distinguishable
+
+Classification output column draft:
+- 研究分類: Human-readable research label such as 優先深掘り, 通常観察, 低優先観察, 強警戒, 危険観察, or 除外.
+- 分類コード: Internal stable code for sorting or future logic; not intended as an investment rank.
+- 分類理由: Short explanation of why the research classification was assigned.
+- 注意区分: Caution bucket such as 通常, 注意, 強警戒, 危険観察, or 除外.
+- 出力枠: Output bucket such as 通常候補TSV, 危険観察TSV, or 除外.
+
 Guard rule:
 No positive research label may override exclusion, danger-observation, or strong-caution conditions.
 
