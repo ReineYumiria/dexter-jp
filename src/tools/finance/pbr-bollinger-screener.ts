@@ -232,6 +232,31 @@ export const RESEARCH_CLASSIFICATION_METADATA = {
   }
 >;
 
+export function classifyResearchCandidate(
+  input: ResearchClassificationInput,
+  thresholds: ResearchClassificationThresholds = DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS,
+): ResearchClassificationResult {
+  void input;
+  void thresholds;
+
+  // Decision order skeleton:
+  // 1. Exclusion
+  // 2. Danger observation
+  // 3. Strong caution
+  // 4. Priority research
+  // 5. Low-priority observation
+  // 6. Normal observation
+  const metadata = RESEARCH_CLASSIFICATION_METADATA.NORMAL_OBSERVATION;
+
+  return {
+    code: 'NORMAL_OBSERVATION',
+    label: metadata.label,
+    reason: '研究整理用フォールバック。詳細分類は未実装。',
+    cautionBucket: metadata.cautionBucket,
+    outputBucket: metadata.outputBucket,
+  };
+}
+
 const JQUANTS_BASE = 'https://api.jquants.com/v2';
 
 const DEFAULT_TARGETS = [
