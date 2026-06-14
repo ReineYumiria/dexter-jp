@@ -359,7 +359,31 @@ export function classifyResearchCandidate(
     return createResult('STRONG_CAUTION', '急落文脈があるため強警戒。');
   }
 
-  // 4. Priority research: intentionally not implemented in this step.
+  // 4. Priority research
+  if (
+    hasLowPbrContext &&
+    hasLowerBandOrRebound &&
+    input.valuation.valueScore >=
+      thresholds.value.minimumValueScoreForPriorityResearch &&
+    input.safety.safetyScore >=
+      thresholds.safety.minimumSafetyScoreForPriorityResearch &&
+    input.technical.technicalScore >=
+      thresholds.technical.minimumTechnicalScoreForPriorityResearch &&
+    input.risk.riskScore >= thresholds.risk.minimumRiskScoreForPriorityResearch &&
+    cautionFlagCount <=
+      thresholds.cautionFlags.maximumFlagCountForPriorityResearch &&
+    missingFieldCount <=
+      thresholds.dataQuality.maxMissingFieldsForPriorityResearch &&
+    unusableIndicatorCount <=
+      thresholds.dataQuality.maxUnusableIndicatorsForPriorityResearch &&
+    lowLiquidityFlagCount <=
+      thresholds.liquidity.maxLowLiquidityFlagCountForPriorityResearch &&
+    sharpDeclineFlagCount <=
+      thresholds.decline.maxSharpDeclineFlagCountForPriorityResearch
+  ) {
+    return createResult('PRIORITY_RESEARCH', '複数の研究材料が揃っているため優先深掘り。');
+  }
+
   // 5. Low-priority observation
   if (
     input.valuation.valueScore <

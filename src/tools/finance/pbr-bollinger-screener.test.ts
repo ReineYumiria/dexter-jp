@@ -102,6 +102,42 @@ function createClassificationInput(
   };
 }
 
+function createPriorityResearchInput(
+  overrides: ClassificationInputOverrides = {},
+): ResearchClassificationInput {
+  return createClassificationInput({
+    ...overrides,
+    valuation: {
+      pbr:
+        DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS.value
+          .maximumPbrForPriorityResearch,
+      valueScore:
+        DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS.value
+          .minimumValueScoreForPriorityResearch,
+      ...overrides.valuation,
+    },
+    safety: {
+      safetyScore:
+        DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS.safety
+          .minimumSafetyScoreForPriorityResearch,
+      ...overrides.safety,
+    },
+    technical: {
+      bbState: 'BB_LOW_NEAR',
+      technicalScore:
+        DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS.technical
+          .minimumTechnicalScoreForPriorityResearch,
+      ...overrides.technical,
+    },
+    risk: {
+      riskScore:
+        DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS.risk
+          .minimumRiskScoreForPriorityResearch,
+      ...overrides.risk,
+    },
+  });
+}
+
 describe('classifyResearchCandidate', () => {
   test('returns EXCLUDED when shouldExcludeByDefault is true', () => {
     const result = classifyResearchCandidate(
@@ -162,6 +198,191 @@ describe('classifyResearchCandidate', () => {
     expect(result.code).toBe('STRONG_CAUTION');
   });
 
+  test('returns PRIORITY_RESEARCH when all research conditions align', () => {
+    const result = classifyResearchCandidate(createPriorityResearchInput());
+
+    expect(result.code).toBe('PRIORITY_RESEARCH');
+  });
+
+  test('does not return PRIORITY_RESEARCH from low PBR alone', () => {
+    const result = classifyResearchCandidate(
+      createClassificationInput({
+        valuation: {
+          pbr:
+            DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS.value
+              .maximumPbrForPriorityResearch,
+          valueScore:
+            DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS.value
+              .minimumValueScoreForPriorityResearch - 1,
+        },
+      }),
+    );
+
+    expect(result.code).not.toBe('PRIORITY_RESEARCH');
+  });
+
+  test('does not return PRIORITY_RESEARCH from BB_LOW_NEAR alone', () => {
+    const result = classifyResearchCandidate(
+      createClassificationInput({
+        valuation: {
+          pbr: null,
+          valueScore:
+            DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS.value
+              .minimumValueScoreForPriorityResearch - 1,
+        },
+        technical: {
+          bbState: 'BB_LOW_NEAR',
+        },
+      }),
+    );
+
+    expect(result.code).not.toBe('PRIORITY_RESEARCH');
+  });
+
+  test('does not return PRIORITY_RESEARCH from BB_REBOUND alone', () => {
+    const result = classifyResearchCandidate(
+      createClassificationInput({
+        valuation: {
+          pbr: null,
+          valueScore:
+            DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS.value
+              .minimumValueScoreForPriorityResearch - 1,
+        },
+        technical: {
+          bbState: 'BB_REBOUND',
+        },
+      }),
+    );
+
+    expect(result.code).not.toBe('PRIORITY_RESEARCH');
+  });
+
+  test('does not return PRIORITY_RESEARCH from valueScore alone', () => {
+    const result = classifyResearchCandidate(
+      createClassificationInput({
+        valuation: {
+          pbr: null,
+          valueScore:
+            DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS.value
+              .minimumValueScoreForPriorityResearch,
+        },
+        technical: {
+          technicalScore: 0,
+        },
+      }),
+    );
+
+    expect(result.code).not.toBe('PRIORITY_RESEARCH');
+  });
+
+  test('does not return PRIORITY_RESEARCH from technicalScore alone', () => {
+    const result = classifyResearchCandidate(
+      createClassificationInput({
+        valuation: {
+          pbr: null,
+          valueScore:
+            DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS.value
+              .minimumValueScoreForPriorityResearch - 1,
+        },
+        technical: {
+          technicalScore:
+            DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS.technical
+              .minimumTechnicalScoreForPriorityResearch,
+        },
+      }),
+    );
+
+    expect(result.code).not.toBe('PRIORITY_RESEARCH');
+  });
+
+  test('does not return PRIORITY_RESEARCH when safetyScore is insufficient', () => {
+    const result = classifyResearchCandidate(
+      createPriorityResearchInput({
+        safety: {
+          safetyScore:
+            DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS.safety
+              .minimumSafetyScoreForPriorityResearch - 1,
+        },
+      }),
+    );
+
+    expect(result.code).not.toBe('PRIORITY_RESEARCH');
+  });
+
+  test('does not return PRIORITY_RESEARCH when riskScore is insufficient', () => {
+    const result = classifyResearchCandidate(
+      createPriorityResearchInput({
+        risk: {
+          riskScore:
+            DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS.risk
+              .minimumRiskScoreForPriorityResearch - 1,
+        },
+      }),
+    );
+
+    expect(result.code).not.toBe('PRIORITY_RESEARCH');
+  });
+
+  test('does not return PRIORITY_RESEARCH when caution flags exceed the limit', () => {
+    const result = classifyResearchCandidate(
+      createPriorityResearchInput({
+        risk: {
+          cautionFlags: ['CHECK_CAUTION'],
+        },
+      }),
+    );
+
+    expect(result.code).not.toBe('PRIORITY_RESEARCH');
+  });
+
+  test('does not return PRIORITY_RESEARCH when missing fields exceed the limit', () => {
+    const result = classifyResearchCandidate(
+      createPriorityResearchInput({
+        dataConfidence: {
+          missingFields: ['pbr-source'],
+        },
+      }),
+    );
+
+    expect(result.code).not.toBe('PRIORITY_RESEARCH');
+  });
+
+  test('does not return PRIORITY_RESEARCH when unusable indicators exceed the limit', () => {
+    const result = classifyResearchCandidate(
+      createPriorityResearchInput({
+        dataConfidence: {
+          unusableIndicatorReasons: ['bb-unavailable'],
+        },
+      }),
+    );
+
+    expect(result.code).not.toBe('PRIORITY_RESEARCH');
+  });
+
+  test('does not return PRIORITY_RESEARCH when low-liquidity flags exceed the limit', () => {
+    const result = classifyResearchCandidate(
+      createPriorityResearchInput({
+        risk: {
+          lowLiquidityFlags: ['LOW_VOLUME'],
+        },
+      }),
+    );
+
+    expect(result.code).not.toBe('PRIORITY_RESEARCH');
+  });
+
+  test('does not return PRIORITY_RESEARCH when sharp-decline context exceeds the limit', () => {
+    const result = classifyResearchCandidate(
+      createPriorityResearchInput({
+        risk: {
+          sharpDeclineContext: ['SHARP_DECLINE'],
+        },
+      }),
+    );
+
+    expect(result.code).not.toBe('PRIORITY_RESEARCH');
+  });
+
   test('returns LOW_PRIORITY_OBSERVATION when value and safety materials are weak', () => {
     const result = classifyResearchCandidate(
       createClassificationInput({
@@ -199,6 +420,20 @@ describe('classifyResearchCandidate', () => {
           safetyScore:
             DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS.safety
               .weakSafetyScoreThreshold,
+        },
+      }),
+    );
+
+    expect(result.code).toBe('DANGER_OBSERVATION');
+  });
+
+  test('prioritizes DANGER_OBSERVATION over PRIORITY_RESEARCH', () => {
+    const result = classifyResearchCandidate(
+      createPriorityResearchInput({
+        risk: {
+          riskScore:
+            DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS.risk
+              .dangerObservationMaxRiskScore,
         },
       }),
     );
