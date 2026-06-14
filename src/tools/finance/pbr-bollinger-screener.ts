@@ -939,6 +939,25 @@ Classification output column draft:
 - 注意区分: Caution bucket such as 通常, 注意, 強警戒, 危険観察, or 除外.
 - 出力枠: Output bucket such as 通常候補TSV, 危険観察TSV, or 除外.
 
+v0.4 step 10:
+- Defines internal classification codes before implementing classification output
+- Codes are for sorting and stable processing only, not investment ranks
+- Display labels should remain Japanese research labels
+- A/B/C-style display should not be used as the primary spreadsheet output
+
+Classification code draft:
+- EXCLUDED: 除外
+- DANGER_OBSERVATION: 危険観察
+- STRONG_CAUTION: 強警戒
+- PRIORITY_RESEARCH: 優先深掘り
+- NORMAL_OBSERVATION: 通常観察
+- LOW_PRIORITY_OBSERVATION: 低優先観察
+
+Code display rule:
+- Internal codes may be used for filtering, sorting, testing, or future logic.
+- Spreadsheet users should primarily read 研究分類, 注意区分, and 出力枠.
+- Codes must not be described as investment ranks or buy/sell signals.
+
 Guard rule:
 No positive research label may override exclusion, danger-observation, or strong-caution conditions.
 
