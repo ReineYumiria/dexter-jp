@@ -860,6 +860,20 @@ Danger-observation condition draft:
 - Data source limitations make the apparent undervaluation unreliable
 - Strong caution flags dominate value, safety, or technical signals
 
+v0.4 step 5:
+- Defines strong-caution conditions before implementing classification logic
+- Strong-caution items may remain visible, but must not be treated as positive research-priority labels
+- Strong-caution does not mean sell, short, or automatic rejection
+- Positive value, safety, or technical signals may not erase strong caution flags
+
+Strong-caution condition draft:
+- riskScore is elevated, but not severe enough for danger-observation
+- Low PBR exists, but safetyScore is weak or caution flags remain important
+- Technical reaction exists, but volume confirmation is weak or unstable
+- Ichimoku signals are mixed or not enough to support the technical context
+- Profitability or capital safety indicators require additional confirmation
+- Multiple minor caution flags exist across value, safety, technical, or data reliability
+
 Guard rule:
 No positive research label may override exclusion, danger-observation, or strong-caution conditions.
 
