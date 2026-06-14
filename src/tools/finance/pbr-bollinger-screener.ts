@@ -845,6 +845,21 @@ Exclusion condition draft:
 - Security is outside the current research scope
 - Calculation result contains insufficient confidence for normal comparison
 
+v0.4 step 4:
+- Defines danger-observation conditions before implementing classification logic
+- Danger-observation items are research-only and should be separated from normal candidates
+- Danger-observation does not mean sell, short, or automatic rejection
+- Low PBR, BB lower-band contact, or technical rebound may not override danger-observation conditions
+
+Danger-observation condition draft:
+- Very high riskScore caused by multiple caution factors
+- Low PBR appears together with severe financial weakness
+- Technical rebound signal appears after a sharp decline without enough safety confirmation
+- BB lower-band contact appears with weak liquidity or unstable price data
+- Negative or deteriorating profitability indicators require separate observation
+- Data source limitations make the apparent undervaluation unreliable
+- Strong caution flags dominate value, safety, or technical signals
+
 Guard rule:
 No positive research label may override exclusion, danger-observation, or strong-caution conditions.
 
