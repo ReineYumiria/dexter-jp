@@ -799,6 +799,23 @@ v0.3.1 step 5:
 - Does not calculate total score or A/B/C classification
 - Does not provide buy/sell recommendations
 
+v0.4 step 1:
+- Defines research classification labels before total score implementation
+- Labels are for research prioritization only, not buy/sell judgment
+- A/B/C labels must not be presented as investment ranks
+- "A候補" means "優先深掘り候補", not "買い候補"
+- Keeps component scores non-additive
+- Does not calculate total score yet
+- Does not provide buy/sell recommendations
+
+Research classification label definitions:
+- 優先深掘り: Low valuation, financial safety, and technical reaction signals are relatively aligned; prioritized for additional research only.
+- 通常観察: Some conditions are met, but one or more of valuation, safety, technical, or risk factors require confirmation.
+- 低優先観察: Signal alignment is weak or there are many unresolved confirmation points.
+- 強警戒: Attractive-looking valuation or reaction signs exist, but important caution factors are present.
+- 危険観察: Useful for research, but prone to misuse as an investment signal; should be separated from normal candidates.
+- 除外: Outside the current research target due to missing data, abnormal indicators, low liquidity, weak safety, or rule mismatch.
+
 This tool is for research candidate extraction only.
 `.trim();
 
