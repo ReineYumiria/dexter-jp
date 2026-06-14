@@ -45,6 +45,56 @@ export type ResearchClassificationResult = {
   outputBucket: ResearchOutputBucket;
 };
 
+export type ResearchClassificationInput = {
+  identity: {
+    code: string;
+    name: string;
+    market?: string | null;
+    identifiers?: Record<string, string | null>;
+  };
+  valuation: {
+    pbr: number | null;
+    per: number | null;
+    dividendYield: number | null;
+    bps: number | null;
+    dps: number | null;
+    valueScore: number;
+    provisionalSourceNotes: string[];
+  };
+  safety: {
+    equityRatio: number | null;
+    roe: number | null;
+    safetyScore: number;
+    financialCautionFlags: string[];
+  };
+  technical: {
+    bbState: string | null;
+    bbPosition: number | null;
+    volumeReaction: string | null;
+    ichimokuSummary: string | null;
+    technicalScore: number;
+    technicalCautionFlags: string[];
+  };
+  risk: {
+    riskScore: number;
+    cautionFlags: string[];
+    abnormalIndicatorFlags: string[];
+    lowLiquidityFlags: string[];
+    sharpDeclineContext: string[];
+  };
+  dataConfidence: {
+    missingFields: string[];
+    unreliableFields: string[];
+    unusableIndicatorReasons: string[];
+    calculationConfidenceNotes: string[];
+  };
+  outputPolicy: {
+    canUseNormalCandidateTsv: boolean;
+    canUseDangerObservationTsv: boolean;
+    shouldExcludeByDefault: boolean;
+  };
+};
+
 export const RESEARCH_CLASSIFICATION_METADATA = {
   EXCLUDED: {
     label: '除外',
