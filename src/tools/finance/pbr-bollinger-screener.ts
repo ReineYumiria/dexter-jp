@@ -910,6 +910,21 @@ Low-priority-observation condition draft:
 - No urgent research-priority signal is present
 - Candidate remains in the research universe but is not prioritized
 
+v0.4 step 8:
+- Defines TSV separation policy before implementing classification output
+- Normal research candidates and danger-observation items should be separable
+- Danger-observation items should not be mixed into the default normal candidate TSV
+- Excluded items should not be output by default
+- Classification labels may be added later only as research-priority labels
+- Spreadsheet workflow should keep normal candidates and danger-observation items visually separated
+
+TSV separation draft:
+- Default TSV: normal research candidates only
+- Danger-observation TSV: separate optional output for research review
+- Excluded items: omitted by default, optionally summarized in notes or diagnostics later
+- Strong-caution items: may remain in default TSV only if clearly labeled and not treated as positive candidates
+- Priority-research / normal-observation / low-priority-observation: may share the normal candidate TSV if labels are explicitly research-priority labels
+
 Guard rule:
 No positive research label may override exclusion, danger-observation, or strong-caution conditions.
 
