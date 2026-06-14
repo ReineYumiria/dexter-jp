@@ -1056,6 +1056,22 @@ v0.4 step 12:
 - Does not calculate total score
 - Does not provide buy/sell recommendations
 
+v0.4 step 13:
+- Defines classification helper function design before implementing logic
+- Helper function should return ResearchClassificationResult
+- Helper function must apply exclusion, danger-observation, and strong-caution checks before positive research labels
+- Helper function must not calculate total score
+- Helper function must not provide buy/sell recommendations
+- Helper function must not merge component scores into a single investment score
+
+Classification helper draft:
+- Function name: classifyResearchCandidate
+- Input: existing candidate metrics, component scores, caution flags, and data-confidence context
+- Output: ResearchClassificationResult
+- Decision order: EXCLUDED → DANGER_OBSERVATION → STRONG_CAUTION → PRIORITY_RESEARCH → NORMAL_OBSERVATION → LOW_PRIORITY_OBSERVATION
+- Reason field should be short and spreadsheet-friendly
+- Classification should be treated as research organization only
+
 Guard rule:
 No positive research label may override exclusion, danger-observation, or strong-caution conditions.
 
