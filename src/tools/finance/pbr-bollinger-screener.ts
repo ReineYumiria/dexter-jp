@@ -890,6 +890,26 @@ Priority-research condition draft:
 - Volume or trend context provides enough confirmation for research prioritization
 - Candidate remains a research target requiring human review
 
+v0.4 step 7:
+- Defines normal-observation and low-priority-observation conditions before implementing classification logic
+- Normal-observation means the item remains worth watching, not that it is attractive for investment
+- Low-priority-observation means research priority is currently low, not that the company is bad
+- These labels are only assigned after exclusion, danger-observation, strong-caution, and priority-research checks
+
+Normal-observation condition draft:
+- Some value, safety, or technical signals are present
+- Signal alignment is incomplete or mixed
+- Confirmation points remain across valuation, safety, technical, or data reliability
+- No exclusion, danger-observation, or strong-caution condition dominates
+- Candidate may be reviewed later as part of research monitoring
+
+Low-priority-observation condition draft:
+- Signal alignment is weak
+- Value, safety, or technical scores do not clearly support deeper research
+- Confirmation points are numerous or unresolved
+- No urgent research-priority signal is present
+- Candidate remains in the research universe but is not prioritized
+
 Guard rule:
 No positive research label may override exclusion, danger-observation, or strong-caution conditions.
 
