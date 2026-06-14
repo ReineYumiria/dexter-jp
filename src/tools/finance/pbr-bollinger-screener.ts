@@ -9,6 +9,82 @@ import {
   type PriceBar,
 } from './indicators.js';
 
+export type ResearchClassificationCode =
+  | 'EXCLUDED'
+  | 'DANGER_OBSERVATION'
+  | 'STRONG_CAUTION'
+  | 'PRIORITY_RESEARCH'
+  | 'NORMAL_OBSERVATION'
+  | 'LOW_PRIORITY_OBSERVATION';
+
+export type ResearchClassificationLabel =
+  | '除外'
+  | '危険観察'
+  | '強警戒'
+  | '優先深掘り'
+  | '通常観察'
+  | '低優先観察';
+
+export type ResearchCautionBucket =
+  | '通常'
+  | '注意'
+  | '強警戒'
+  | '危険観察'
+  | '除外';
+
+export type ResearchOutputBucket =
+  | '通常候補TSV'
+  | '危険観察TSV'
+  | '除外';
+
+export type ResearchClassificationResult = {
+  code: ResearchClassificationCode;
+  label: ResearchClassificationLabel;
+  reason: string;
+  cautionBucket: ResearchCautionBucket;
+  outputBucket: ResearchOutputBucket;
+};
+
+export const RESEARCH_CLASSIFICATION_METADATA = {
+  EXCLUDED: {
+    label: '除外',
+    cautionBucket: '除外',
+    outputBucket: '除外',
+  },
+  DANGER_OBSERVATION: {
+    label: '危険観察',
+    cautionBucket: '危険観察',
+    outputBucket: '危険観察TSV',
+  },
+  STRONG_CAUTION: {
+    label: '強警戒',
+    cautionBucket: '強警戒',
+    outputBucket: '通常候補TSV',
+  },
+  PRIORITY_RESEARCH: {
+    label: '優先深掘り',
+    cautionBucket: '通常',
+    outputBucket: '通常候補TSV',
+  },
+  NORMAL_OBSERVATION: {
+    label: '通常観察',
+    cautionBucket: '通常',
+    outputBucket: '通常候補TSV',
+  },
+  LOW_PRIORITY_OBSERVATION: {
+    label: '低優先観察',
+    cautionBucket: '注意',
+    outputBucket: '通常候補TSV',
+  },
+} as const satisfies Record<
+  ResearchClassificationCode,
+  {
+    label: ResearchClassificationLabel;
+    cautionBucket: ResearchCautionBucket;
+    outputBucket: ResearchOutputBucket;
+  }
+>;
+
 const JQUANTS_BASE = 'https://api.jquants.com/v2';
 
 const DEFAULT_TARGETS = [
