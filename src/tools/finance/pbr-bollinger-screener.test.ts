@@ -206,3 +206,19 @@ describe('classifyResearchCandidate', () => {
     expect(result.code).toBe('DANGER_OBSERVATION');
   });
 });
+
+// PRIORITY_RESEARCH test notes for the future implementation:
+// - Consider it only when low PBR, valueScore, safetyScore, technicalScore,
+//   riskScore, data quality, liquidity, decline context, and BB observation
+//   materials align as multiple research signals.
+// - Do not classify as PRIORITY_RESEARCH from low PBR alone.
+// - Do not classify as PRIORITY_RESEARCH from valueScore alone.
+// - Do not classify as PRIORITY_RESEARCH from technicalScore alone.
+// - Do not classify as PRIORITY_RESEARCH from BB_LOW_NEAR alone.
+// - Do not classify as PRIORITY_RESEARCH from BB_REBOUND alone.
+// - Do not classify as PRIORITY_RESEARCH when safetyScore or riskScore is
+//   below the required threshold.
+// - Do not classify as PRIORITY_RESEARCH when caution, missing-data,
+//   liquidity, or decline constraints exceed the priority-research limits.
+// - Preserve decision order: negative classifications and
+//   LOW_PRIORITY_OBSERVATION must not be bypassed by positive research labels.
