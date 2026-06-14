@@ -1178,6 +1178,32 @@ v0.4 step 16:
 - Does not calculate total score
 - Does not provide buy/sell recommendations
 
+v0.4 step 17:
+- Defines threshold and rule-material design before implementing classification constants
+- Thresholds should support exclusion, danger-observation, strong-caution, and research-priority checks without creating a total investment score
+- Component scores may guide classification but must remain non-additive
+- Positive value or technical signals must not override risk, data-quality, or strong-caution conditions
+- Thresholds should be conservative and research-oriented, not investment recommendations
+
+Classification threshold draft:
+- riskScore may be used to identify danger-observation or strong-caution candidates
+- safetyScore may be used to prevent priority-research classification when financial safety is weak
+- valueScore may support priority-research only when safety and risk conditions are acceptable
+- technicalScore may support priority-research only when not contradicted by risk, liquidity, or data-confidence warnings
+- caution flag counts may push candidates toward strong-caution or danger-observation
+- missingFields and unusableIndicatorReasons may push candidates toward exclusion or danger-observation
+- lowLiquidityFlags and sharpDeclineContext may prevent normal candidate treatment
+- provisional source notes should remain visible in classification reasons when relevant
+
+Threshold guard rule draft:
+- Do not define or use totalScore
+- Do not sum valueScore, safetyScore, technicalScore, and riskScore into a single rank
+- Do not allow low PBR alone to produce priority-research
+- Do not allow BB lower-band contact alone to produce priority-research
+- Do not allow technical rebound alone to produce priority-research
+- Do not encode buy/sell/hold decisions
+- Keep thresholds adjustable after spreadsheet review
+
 Guard rule:
 No positive research label may override exclusion, danger-observation, or strong-caution conditions.
 
