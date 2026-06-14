@@ -958,6 +958,19 @@ Code display rule:
 - Spreadsheet users should primarily read 研究分類, 注意区分, and 出力枠.
 - Codes must not be described as investment ranks or buy/sell signals.
 
+v0.4 step 11:
+- Defines TypeScript type design before implementing classification logic
+- Classification types should preserve separation between display labels, internal codes, caution bucket, and output bucket
+- Types are for research organization only and must not represent investment judgment
+- Classification logic should be implemented only after these types are reviewed
+
+Type design draft:
+- ResearchClassificationCode: EXCLUDED | DANGER_OBSERVATION | STRONG_CAUTION | PRIORITY_RESEARCH | NORMAL_OBSERVATION | LOW_PRIORITY_OBSERVATION
+- ResearchClassificationLabel: 除外 | 危険観察 | 強警戒 | 優先深掘り | 通常観察 | 低優先観察
+- ResearchCautionBucket: 通常 | 注意 | 強警戒 | 危険観察 | 除外
+- ResearchOutputBucket: 通常候補TSV | 危険観察TSV | 除外
+- ResearchClassificationResult: code, label, reason, cautionBucket, outputBucket
+
 Guard rule:
 No positive research label may override exclusion, danger-observation, or strong-caution conditions.
 
