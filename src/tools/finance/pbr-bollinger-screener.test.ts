@@ -1,7 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  buildNormalCandidateTsvRow,
+  buildResearchClassificationInput,
   classifyResearchCandidate,
   DEFAULT_RESEARCH_CLASSIFICATION_THRESHOLDS,
+  NORMAL_CANDIDATE_TSV_HEADER,
   type ResearchClassificationInput,
 } from './pbr-bollinger-screener.js';
 
@@ -14,6 +17,8 @@ type ClassificationInputOverrides = {
   dataConfidence?: Partial<ResearchClassificationInput['dataConfidence']>;
   outputPolicy?: Partial<ResearchClassificationInput['outputPolicy']>;
 };
+
+type TestScreenerResult = Parameters<typeof buildResearchClassificationInput>[0];
 
 function createClassificationInput(
   overrides: ClassificationInputOverrides = {},
@@ -138,6 +143,46 @@ function createPriorityResearchInput(
   });
 }
 
+function createScreenerResult(
+  overrides: Partial<TestScreenerResult> = {},
+): TestScreenerResult {
+  return {
+    code: '7203',
+    name: 'Test Company',
+    latestClose: 1000,
+    latestVolume: 1_000_000,
+    previousClose: 990,
+    per: 12,
+    pbr: 0.9,
+    dividendYield: 0.03,
+    equityRatio: 0.45,
+    roe: 0.1,
+    bps: 1100,
+    dps: 30,
+    technicalScore: 10,
+    technicalScoreNotes: ['technical note'],
+    valueScore: 8,
+    valueScoreNotes: ['value note'],
+    safetyScore: 5,
+    safetyScoreNotes: ['safety note'],
+    riskScore: 5,
+    riskScoreNotes: ['risk note'],
+    bbState: 'BB_LOW_NEAR',
+    bbStateLabel: 'low zone',
+    bbPosition: -1.8,
+    middle: 1000,
+    upper2: 1100,
+    lower2: 900,
+    middleLineRecovered: true,
+    volumeRebound: 'VOLUME_REBOUND',
+    ichimokuState: 'IN_CLOUD',
+    barCount: 120,
+    from: '2026-01-01',
+    to: '2026-06-18',
+    notes: ['candidate note'],
+    ...overrides,
+  };
+}
 describe('classifyResearchCandidate', () => {
   test('returns EXCLUDED when shouldExcludeByDefault is true', () => {
     const result = classifyResearchCandidate(
@@ -439,6 +484,69 @@ describe('classifyResearchCandidate', () => {
     );
 
     expect(result.code).toBe('DANGER_OBSERVATION');
+  });
+});
+
+describe('get_pbr_bollinger_screener classification connection', () => {
+  test('builds classification input from one screener candidate', () => {
+    const input = buildResearchClassificationInput(
+      createScreenerResult({
+        latestVolume: null,
+        pbr: null,
+        bbState: 'BB_UNKNOWN',
+        barCount: 0,
+      }),
+    );
+
+    expect(input.identity.code).toBe('7203');
+    expect(input.valuation.valueScore).toBe(8);
+    expect(input.safety.safetyScore).toBe(5);
+    expect(input.technical.technicalScore).toBe(10);
+    expect(input.risk.riskScore).toBe(5);
+    expect(input.dataConfidence.missingFields).toContain('pbr');
+    expect(input.dataConfidence.unusableIndicatorReasons).toContain('NO_PRICE_BARS');
+    expect(input.risk.lowLiquidityFlags).toContain('VOLUME_NA');
+    expect(input.outputPolicy.shouldExcludeByDefault).toBe(false);
+
+    const classificationResult = classifyResearchCandidate(input);
+
+    expect(classificationResult.code).toBeTruthy();
+  });
+
+  test('keeps the existing TSV header shape after internal classification connection', () => {
+    expect(NORMAL_CANDIDATE_TSV_HEADER).toHaveLength(35);
+    expect(NORMAL_CANDIDATE_TSV_HEADER).not.toContain('classificationCode');
+    expect(NORMAL_CANDIDATE_TSV_HEADER).not.toContain('classificationLabel');
+    expect(NORMAL_CANDIDATE_TSV_HEADER).not.toContain('classificationReason');
+    expect(NORMAL_CANDIDATE_TSV_HEADER).not.toContain('cautionBucket');
+    expect(NORMAL_CANDIDATE_TSV_HEADER).not.toContain('outputBucket');
+  });
+
+  test('keeps the existing TSV row column count after internal classification connection', () => {
+    const row = buildNormalCandidateTsvRow(createScreenerResult());
+
+    expect(row).toHaveLength(NORMAL_CANDIDATE_TSV_HEADER.length);
+  });
+
+  test('keeps classification reasons free of buy-sell recommendation wording', () => {
+    const forbiddenTerms = ['買い', '売り', '推奨', '投資ランク', '狙い目'];
+    const results = [
+      classifyResearchCandidate(createClassificationInput()),
+      classifyResearchCandidate(createPriorityResearchInput()),
+      classifyResearchCandidate(
+        createClassificationInput({
+          outputPolicy: {
+            shouldExcludeByDefault: true,
+          },
+        }),
+      ),
+    ];
+
+    for (const result of results) {
+      expect(forbiddenTerms.some((term) => result.reason.includes(term))).toBe(
+        false,
+      );
+    }
   });
 });
 

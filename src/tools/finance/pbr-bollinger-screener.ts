@@ -426,7 +426,7 @@ const DEFAULT_TARGETS = [
   { code: '7974', name: '任天堂' },
 ] as const;
 
-const NORMAL_CANDIDATE_TSV_HEADER = [
+export const NORMAL_CANDIDATE_TSV_HEADER = [
   'コード',
   '銘柄名',
   '市場',
@@ -1075,7 +1075,117 @@ function escapeTsvValue(value: string): string {
   return value.replace(/\t/g, ' ').replace(/\r?\n/g, ' ');
 }
 
-function buildNormalCandidateTsvRow(result: ScreenerResult): string[] {
+export function buildResearchClassificationInput(
+  result: ScreenerResult,
+): ResearchClassificationInput {
+  const missingFields = [
+    result.latestClose === null ? 'latestClose' : null,
+    result.latestVolume === null ? 'latestVolume' : null,
+    result.per === null ? 'per' : null,
+    result.pbr === null ? 'pbr' : null,
+    result.dividendYield === null ? 'dividendYield' : null,
+    result.equityRatio === null ? 'equityRatio' : null,
+    result.roe === null ? 'roe' : null,
+    result.bps === null ? 'bps' : null,
+    result.dps === null ? 'dps' : null,
+  ].filter((field): field is string => field !== null);
+
+  const financialCautionFlags = [
+    result.pbr === null ? 'PBR_NA' : null,
+    result.equityRatio === null ? 'EQUITY_RATIO_NA' : null,
+    result.roe === null ? 'ROE_NA' : null,
+    result.bps === null ? 'BPS_NA' : null,
+  ].filter((flag): flag is string => flag !== null);
+
+  const technicalCautionFlags = [
+    result.bbState === 'BB_UNKNOWN' ? 'BB_UNKNOWN' : null,
+    result.middleLineRecovered === false ? 'MIDDLE_LINE_NOT_RECOVERED' : null,
+    result.volumeRebound === 'NO_VOLUME_REBOUND' ? 'NO_VOLUME_REBOUND' : null,
+    result.ichimokuState === 'BELOW_CLOUD' ? 'ICHIMOKU_BELOW_CLOUD' : null,
+  ].filter((flag): flag is string => flag !== null);
+
+  const abnormalIndicatorFlags = [
+    result.pbr !== null && result.pbr <= 0 ? 'PBR_NON_POSITIVE' : null,
+    result.bps !== null && result.bps <= 0 ? 'BPS_NON_POSITIVE' : null,
+  ].filter((flag): flag is string => flag !== null);
+
+  const lowLiquidityFlags = [
+    result.latestVolume === null ? 'VOLUME_NA' : null,
+    result.latestVolume !== null && result.latestVolume < 300_000
+      ? 'VOLUME_BELOW_300000'
+      : null,
+  ].filter((flag): flag is string => flag !== null);
+
+  const sharpDeclineContext = [
+    result.bbState === 'BB_DOWN_WALK' ? 'BB_DOWN_WALK' : null,
+  ].filter((flag): flag is string => flag !== null);
+
+  const unusableIndicatorReasons = [
+    result.barCount === 0 ? 'NO_PRICE_BARS' : null,
+    result.bbState === 'BB_UNKNOWN' ? 'BB_STATE_UNKNOWN' : null,
+  ].filter((reason): reason is string => reason !== null);
+
+  return {
+    identity: {
+      code: result.code,
+      name: result.name,
+      market: null,
+      identifiers: {},
+    },
+    valuation: {
+      pbr: result.pbr,
+      per: result.per,
+      dividendYield: result.dividendYield,
+      bps: result.bps,
+      dps: result.dps,
+      valueScore: result.valueScore,
+      provisionalSourceNotes: result.valueScoreNotes,
+    },
+    safety: {
+      equityRatio: result.equityRatio,
+      roe: result.roe,
+      safetyScore: result.safetyScore,
+      financialCautionFlags,
+    },
+    technical: {
+      bbState: result.bbState,
+      bbPosition: result.bbPosition,
+      volumeReaction: result.volumeRebound,
+      ichimokuSummary: result.ichimokuState,
+      technicalScore: result.technicalScore,
+      technicalCautionFlags,
+    },
+    risk: {
+      riskScore: result.riskScore,
+      cautionFlags: result.riskScoreNotes,
+      abnormalIndicatorFlags,
+      lowLiquidityFlags,
+      sharpDeclineContext,
+    },
+    dataConfidence: {
+      missingFields,
+      unreliableFields: [],
+      unusableIndicatorReasons,
+      calculationConfidenceNotes: result.notes,
+    },
+    outputPolicy: {
+      canUseNormalCandidateTsv: true,
+      canUseDangerObservationTsv: true,
+      shouldExcludeByDefault: false,
+    },
+  };
+}
+
+function connectResearchClassification(result: ScreenerResult): ScreenerResult {
+  const classificationInput = buildResearchClassificationInput(result);
+  const classificationResult = classifyResearchCandidate(classificationInput);
+
+  void classificationResult;
+
+  return result;
+}
+
+export function buildNormalCandidateTsvRow(result: ScreenerResult): string[] {
   const cautionFlags = [
     '暫定財務指標',
     'PBR暫定計算',
@@ -1607,7 +1717,7 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
             notes.push('Insufficient bars for full Ichimoku calculation; ichimokuState may be UNKNOWN');
           }
 
-          return {
+          return connectResearchClassification({
             code: target.code,
             name: target.name,
             latestClose: indicators.latestClose,
@@ -1647,9 +1757,9 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
               ...safetyScore.notes,
               ...technicalScore.notes,
             ],
-          };
+          });
         } catch (error) {
-          return {
+          return connectResearchClassification({
             code: target.code,
             name: target.name,
             latestClose: null,
@@ -1687,7 +1797,7 @@ export const getPbrBollingerScreener = new DynamicStructuredTool({
               error instanceof Error ? error.message : String(error),
               'Research candidate extraction only; no buy/sell recommendation',
             ],
-          };
+          });
         }
       }),
     );
